@@ -349,12 +349,21 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       children: [
         _buildSectionTitle('송금 금액'),
         const SizedBox(height: 20),
-        Text(
-          '${NumberFormat('#,###').format(double.tryParse(_enteredAmount) ?? 0)}원',
-          style: TextStyle(
-            fontSize: 48,
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).primaryColor,
+        AnimatedSize(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          child: Container(
+            height: 60,
+            alignment: Alignment.center,
+            child: Text(
+              '${NumberFormat('#,###').format(double.tryParse(_enteredAmount) ?? 0)}원',
+              style: TextStyle(
+                fontSize: 48,
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).primaryColor,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
         const SizedBox(height: 30),
@@ -459,15 +468,16 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             .doc('main')
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || !snapshot.data!.exists) {
-            return const Center(child: Text('계좌 정보 없음'));
-          }
-          final accountData = snapshot.data!.data() as Map<String, dynamic>;
-          final balance = accountData['balance'] ?? 0;
-          final accountNumber = accountData['accountNumber'] ?? 'N/A';
+          
+          final accountData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+          final balance = accountData['balance'] ?? _currentBalance;
+          final accountNumber = accountData['accountNumber'] ?? '계좌 정보 없음';
+
+          // 다른 곳에서 잔액을 확인할 수 있도록 상태 업데이트
+          _currentBalance = (balance as num).toDouble();
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -601,57 +611,84 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   Widget _buildNumberPad() {
     return Center(
       child: SizedBox(
-        width: 250, // 키패드 전체 너비 고정 (더 작게)
-        child: Column(
-          children: [
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.8, // 버튼 비율 조정 (더 작게)
-                crossAxisSpacing: 8, // 간격 조정
-                mainAxisSpacing: 2, // 간격 조정
-              ),
-              itemCount: 12,
-              itemBuilder: (context, index) {
-                if (index < 9) {
-                  return _buildNumberButton('${index + 1}');
-                } else if (index == 9) {
-                  return _buildNumberButton('00');
-                } else if (index == 10) {
-                  return _buildNumberButton('0');
-                } else {
-                  return _buildNumberButton(
-                    Icons.backspace_outlined,
-                    onPressed: _onBackspaceTap,
-                  );
-                }
-              },
-            ),
-          ],
+        width: 300, // 키패드 전체 너비 고정
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 1.2, // 버튼 비율 조정
+            crossAxisSpacing: 10, // 간격 조정
+            mainAxisSpacing: 10, // 간격 조정
+          ),
+          itemCount: 12,
+          itemBuilder: (context, index) {
+            if (index < 9) {
+              return _buildNumberButton('${index + 1}');
+            } else if (index == 9) {
+              return _buildClearButton(); // 지우기 버튼
+            } else if (index == 10) {
+              return _buildNumberButton('0');
+            } else {
+              return _buildBackspaceButton(); // 백스페이스 버튼
+            }
+          },
         ),
       ),
     );
   }
 
-  Widget _buildNumberButton(dynamic value, {VoidCallback? onPressed}) {
+  Widget _buildNumberButton(String value) {
     return ElevatedButton(
-      onPressed: onPressed ?? () => _onNumberTap(value.toString()),
+      onPressed: () => _onNumberTap(value),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Theme.of(context).primaryColor,
-        shape: const CircleBorder(), // 원형 디자인
-        elevation: 1, // 그림자 조정
-        padding: EdgeInsets.zero, // 패딩 제거
-        minimumSize: const Size(60, 60), // 버튼 최소 크기 설정
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 2,
+        padding: const EdgeInsets.all(20),
       ),
-      child: value is IconData
-          ? Icon(value, size: 24) // 아이콘 크기 조정
-          : Text(
-              value,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold), // 폰트 크기 조정
-            ),
+      child: Text(
+        value,
+        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildClearButton() {
+    return ElevatedButton(
+      onPressed: _onClearTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey[200],
+        foregroundColor: Colors.black54,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 2,
+        padding: const EdgeInsets.all(20),
+      ),
+      child: const Text(
+        '지우기',
+        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildBackspaceButton() {
+    return ElevatedButton(
+      onPressed: _onBackspaceTap,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.grey[200],
+        foregroundColor: Colors.black54,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        elevation: 2,
+        padding: const EdgeInsets.all(20),
+      ),
+      child: const Icon(Icons.backspace_outlined, size: 24),
     );
   }
 

@@ -44,8 +44,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
           'name': _nameController.text,
           'birthDate': _birthDateController.text,
           'school': _schoolController.text,
+          'pin': password,
+        });
+
+        await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).collection('accounts').doc('main').set({
           'accountNumber': accountNumber,
-          'balance': 1000000, // Add initial balance
+          'balance': 0, // Initial balance set to 0
         });
 
         ScaffoldMessenger.of(context).showSnackBar(

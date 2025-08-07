@@ -14,6 +14,7 @@ class PinScreen extends StatefulWidget {
 class _PinScreenState extends State<PinScreen> {
   String _pin = '';
   String _correctPin = '';
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -34,6 +35,7 @@ class _PinScreenState extends State<PinScreen> {
       if (querySnapshot.docs.isNotEmpty) {
         setState(() {
           _correctPin = querySnapshot.docs.first.data()['pin'];
+          _isLoading = false;
         });
       }
     }
@@ -83,68 +85,70 @@ class _PinScreenState extends State<PinScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              flex: 2, // Adjust flex to give keypad more space
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
                 children: [
-                  const Text(
-                    'PIN 번호를 입력하세요',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                  Expanded(
+                    flex: 2, // Adjust flex to give keypad more space
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'PIN 번호를 입력하세요',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(6, (index) {
+                            return Container(
+                              margin: const EdgeInsets.symmetric(horizontal: 10),
+                              width: 24,
+                              height: 24,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: index < _pin.length
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.grey[300],
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: List.generate(6, (index) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 10),
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: index < _pin.length
-                              ? Theme.of(context).primaryColor
-                              : Colors.grey[300],
-                        ),
-                      );
-                    }),
+                  Expanded(
+                    flex: 3, // Give more space to the keypad
+                    child: GridView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 3,
+                        childAspectRatio: 1.3, // Adjust aspect ratio
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                      ),
+                      itemCount: 12,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemBuilder: (context, index) {
+                        if (index < 9) {
+                          return _buildNumberButton('${index + 1}');
+                        } else if (index == 10) {
+                          return _buildNumberButton('0');
+                        } else if (index == 11) {
+                          return _buildBackspaceButton();
+                        }
+                        // The 10th item (index 9) is an empty container
+                        return Container();
+                      },
+                    ),
                   ),
                 ],
               ),
-            ),
-            Expanded(
-              flex: 3, // Give more space to the keypad
-              child: GridView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 1.3, // Adjust aspect ratio
-                  mainAxisSpacing: 12,
-                  crossAxisSpacing: 12,
-                ),
-                itemCount: 12,
-                physics: const NeverScrollableScrollPhysics(),
-                itemBuilder: (context, index) {
-                  if (index < 9) {
-                    return _buildNumberButton('${index + 1}');
-                  } else if (index == 10) {
-                    return _buildNumberButton('0');
-                  } else if (index == 11) {
-                    return _buildBackspaceButton();
-                  }
-                  // The 10th item (index 9) is an empty container
-                  return Container();
-                },
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
