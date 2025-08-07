@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'transaction_history_screen.dart';
+import 'send_money_screen.dart'; // 송금하기 화면 임포트
 
 import 'insurance_screen.dart';
 import 'loan_screen.dart';
@@ -292,7 +293,12 @@ class _MainScreenState extends State<MainScreen> {
                         MaterialPageRoute(builder: (context) => const TransactionHistoryScreen()),
                       );
                     }),
-                    
+                    _buildActionButton(context, '송금하기', Icons.send, () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SendMoneyScreen()),
+                      );
+                    }),
                   ],
                 ),
               ),

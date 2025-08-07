@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:joybank/firebase_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // Add this line
 
 class TransactionDetailScreen extends StatefulWidget {
   final Map<String, dynamic> transaction;
@@ -153,10 +154,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         children: [
           const Text('거래 정보', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const Divider(height: 24),
-          _buildInfoRow('거래 일시', DateFormat('yyyy.MM.dd HH:mm').format(DateTime.parse(_transactionData['date']))),
-          _buildInfoRow('거래 내용', _transactionData['description']),
-          _buildInfoRow('거래 금액', '${NumberFormat('#,###').format(_transactionData['amount'])}원'),
-          _buildInfoRow('거래 후 잔액', '${NumberFormat('#,###').format(_transactionData['balanceAfter'])}원'),
+          _buildInfoRow('거래 일시', DateFormat('yyyy.MM.dd HH:mm').format((_transactionData['timestamp'] as Timestamp?)?.toDate() ?? DateTime.now())),
+          _buildInfoRow('거래 내용', _transactionData['description'] ?? '내용 없음'),
+          _buildInfoRow('거래 금액', '${NumberFormat('#,###').format(_transactionData['amount'] ?? 0)}원'),
+          _buildInfoRow('거래 후 잔액', '${NumberFormat('#,###').format(_transactionData['balance_after'] ?? 0)}원'),
         ],
       ),
     );
