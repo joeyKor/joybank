@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'transaction_history_screen.dart';
 import 'send_money_screen.dart'; // 송금하기 화면 임포트
+import 'notification_screen.dart'; // 알림 화면 임포트
 
 import 'insurance_screen.dart';
 import 'loan_screen.dart';
@@ -26,6 +27,8 @@ class _MainScreenState extends State<MainScreen> {
   late PageController _adPageController;
   String? _userId; // _email 대신 _userId 사용
   Stream<DocumentSnapshot>? _userStream;
+  User? _currentUser; // 현재 로그인된 사용자 정보를 저장할 변수
+  Stream<int>? _unreadNotificationsStream; // 읽지 않은 알림 수를 위한 스트림
 
   @override
   void initState() {
@@ -33,6 +36,11 @@ class _MainScreenState extends State<MainScreen> {
     _accountPageController = PageController(viewportFraction: 0.9);
     _adPageController = PageController(viewportFraction: 0.9);
     _loadUserIdAndUserStream(); // 함수 이름 변경
+    _getCurrentUser(); // 현재 사용자 정보 로드 함수 호출
+  }
+
+  void _getCurrentUser() {
+    _currentUser = FirebaseAuth.instance.currentUser;
   }
 
   void _loadUserIdAndUserStream() async {
@@ -46,6 +54,14 @@ class _MainScreenState extends State<MainScreen> {
             .collection('accounts')
             .doc('main') // Listen to the main account document
             .snapshots();
+
+        _unreadNotificationsStream = FirebaseFirestore.instance
+            .collection('users')
+            .doc(_userId)
+            .collection('notifications')
+            .where('read', isEqualTo: false)
+            .snapshots()
+            .map((snapshot) => snapshot.docs.length);
       }
     });
   }
@@ -72,6 +88,46 @@ class _MainScreenState extends State<MainScreen> {
               Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
           ),
+          StreamBuilder<int>(
+            stream: _unreadNotificationsStream,
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications, color: Colors.black54),
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen()));
+                    },
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 11,
+                      top: 11,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          '$unreadCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    )
+                ],
+              );
+            },
+          ),
           
           IconButton(
             icon: const Icon(Icons.person, color: Colors.black54),
@@ -87,6 +143,7 @@ class _MainScreenState extends State<MainScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const SizedBox(height: 30),
               _buildAccountsSection(context),
               const SizedBox(height: 30),
               _buildProductsSection(context),

@@ -37,7 +37,19 @@ class _PinScreenState extends State<PinScreen> {
           _correctPin = querySnapshot.docs.first.data()['pin'];
           _isLoading = false;
         });
+      } else {
+        // 사용자 문서가 없거나 PIN 필드가 없는 경우
+        setState(() {
+          _isLoading = false; // 로딩 상태 해제
+          // TODO: PIN 설정 화면으로 이동하거나 오류 메시지 표시
+        });
       }
+    } else {
+      // 이메일이 없는 경우
+      setState(() {
+        _isLoading = false; // 로딩 상태 해제
+        // TODO: 로그인 화면으로 이동
+      });
     }
   }
 
