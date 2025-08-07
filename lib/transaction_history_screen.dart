@@ -180,7 +180,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '잔액: ${NumberFormat('#,###').format(balance)}원',
+                                '${NumberFormat('#,###').format(balance)}원', // "잔액: " 제거
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.bold,
@@ -201,7 +201,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             transactions[index].data() as Map<String, dynamic>;
                         final amount = transaction['amount'] as int;
                         // Determine if it's a deposit for the current user
-                        final isDeposit = transaction['type'] == 'deposit';
+                        final isDeposit = transaction['type'] == '입금';
 
                         return Column(
                           children: [
@@ -243,9 +243,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                           CrossAxisAlignment.start,
                                       children: [
                                         Text(
-                                          isDeposit
-                                              ? '${transaction['senderName'] ?? '알 수 없음'}님으로부터'
-                                              : '${transaction['recipientName'] ?? '알 수 없음'}님께',
+                                          transaction['description'] ?? '내용 없음',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.w500,
                                             fontSize: 15,
@@ -280,7 +278,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                                     ),
                                   ),
                                   Text(
-                                    '잔액: ${NumberFormat('#,###').format(transaction['balanceAfter'] ?? 0)}원',
+                                    '${NumberFormat('#,###').format((transaction['balance_after'] as num?)?.toDouble() ?? 0)}원',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey,
