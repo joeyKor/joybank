@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "806710041554",
+    "project_id": "joybank-9636f",
+    "storage_bucket": "joybank-9636f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:806710041554:android:9ca8815db61842bb79060b",
+        "android_client_info": {
+          "package_name": "com.sedev.joybank"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA5NFAxP-t8Rhoj1UPsk0prQkLbiJKj9fw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
