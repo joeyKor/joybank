@@ -31,6 +31,8 @@ class _LoginScreenState extends State<LoginScreen> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('userId', userCredential.user!.uid); // 사용자 ID 저장
         await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('userPin', password); // PIN 저장
+        await prefs.setString('email', email); // 이메일 저장
 
         Navigator.pushReplacement(
           context,

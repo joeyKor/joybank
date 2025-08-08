@@ -22,35 +22,12 @@ class _PinScreenState extends State<PinScreen> {
     _loadPin();
   }
 
-  void _loadPin() async {
+    void _loadPin() async {
     final prefs = await SharedPreferences.getInstance();
-    final email = prefs.getString('email');
-
-    if (email != null) {
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isEqualTo: email)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        setState(() {
-          _correctPin = querySnapshot.docs.first.data()['pin'];
-          _isLoading = false;
-        });
-      } else {
-        // 사용자 문서가 없거나 PIN 필드가 없는 경우
-        setState(() {
-          _isLoading = false; // 로딩 상태 해제
-          // TODO: PIN 설정 화면으로 이동하거나 오류 메시지 표시
-        });
-      }
-    } else {
-      // 이메일이 없는 경우
-      setState(() {
-        _isLoading = false; // 로딩 상태 해제
-        // TODO: 로그인 화면으로 이동
-      });
-    }
+    _correctPin = prefs.getString('userPin') ?? ''; // SharedPreferences에서 PIN 가져오기
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _onNumberPress(String number) {
@@ -80,12 +57,6 @@ class _PinScreenState extends State<PinScreen> {
         MaterialPageRoute(builder: (context) => const MainScreen()),
       );
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PIN이 올바르지 않습니다. 다시 시도해주세요.'),
-          backgroundColor: Colors.red,
-        ),
-      );
       setState(() {
         _pin = '';
       });

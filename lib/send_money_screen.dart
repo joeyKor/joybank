@@ -6,11 +6,7 @@ import 'package:intl/intl.dart';
 import 'currency_input_formatter.dart'; // 통화 포맷터 임포트
 
 // 송금 단계 Enum 정의
-enum SendMoneyStep {
-  accountValidation,
-  amountInput,
-  memoInput,
-}
+enum SendMoneyStep { accountValidation, amountInput, memoInput }
 
 class SendMoneyScreen extends StatefulWidget {
   const SendMoneyScreen({super.key});
@@ -21,11 +17,14 @@ class SendMoneyScreen extends StatefulWidget {
 
 class _SendMoneyScreenState extends State<SendMoneyScreen> {
   // 기존 컨트롤러
-  final TextEditingController _recipientAccountController = TextEditingController();
-  final TextEditingController _recipientNameDisplayController = TextEditingController(); // 예금주 표시용
+  final TextEditingController _recipientAccountController =
+      TextEditingController();
+  final TextEditingController _recipientNameDisplayController =
+      TextEditingController(); // 예금주 표시용
 
   // 새로운 컨트롤러 및 상태 변수
-  final TextEditingController _toRecipientMemoController = TextEditingController();
+  final TextEditingController _toRecipientMemoController =
+      TextEditingController();
   final TextEditingController _toMeMemoController = TextEditingController();
 
   SendMoneyStep _currentStep = SendMoneyStep.accountValidation; // 현재 송금 단계
@@ -38,9 +37,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   String? _validatedRecipientUserId;
   String _selectedBank = '국민은행';
 
-  final List<String> _banks = [
-    '국민은행', '신한은행', '우리은행', '하나은행', '농협은행', '조이뱅크'
-  ];
+  final List<String> _banks = ['국민은행', '신한은행', '우리은행', '하나은행', '농협은행', '조이뱅크'];
 
   @override
   void initState() {
@@ -61,14 +58,24 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     final prefs = await SharedPreferences.getInstance();
     _userId = prefs.getString('userId');
     if (_userId != null) {
-      final userDoc = await FirebaseFirestore.instance.collection('users').doc(_userId).get(); // 사용자 문서 전체 가져오기
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_userId)
+              .get(); // 사용자 문서 전체 가져오기
       if (userDoc.exists) {
         setState(() {
           _senderName = userDoc.data()?['name'] ?? '나'; // 사용자 이름 가져오기
         });
       }
 
-      final mainAccountDoc = await FirebaseFirestore.instance.collection('users').doc(_userId).collection('accounts').doc('main').get();
+      final mainAccountDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_userId)
+              .collection('accounts')
+              .doc('main')
+              .get();
       if (mainAccountDoc.exists) {
         setState(() {
           _currentBalance = (mainAccountDoc.data()?['balance'] ?? 0).toDouble();
@@ -89,7 +96,9 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       return;
     }
 
-    final cleanedInputAccountNumber = _recipientAccountController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanedInputAccountNumber = _recipientAccountController.text
+        .trim()
+        .replaceAll(RegExp(r'[^0-9]'), '');
 
     if (cleanedInputAccountNumber.isEmpty) {
       _showSnackBar('계좌번호를 입력해주세요.');
@@ -97,7 +106,8 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
     }
 
     try {
-      final usersSnapshot = await FirebaseFirestore.instance.collection('users').get();
+      final usersSnapshot =
+          await FirebaseFirestore.instance.collection('users').get();
       String? foundRecipientName;
       String? foundRecipientUserId;
 
@@ -106,11 +116,15 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         final mainAccountDoc = await accountsCollection.doc('main').get();
 
         if (mainAccountDoc.exists) {
-          final storedAccountNumber = mainAccountDoc.data()?['accountNumber'] as String?;
+          final storedAccountNumber =
+              mainAccountDoc.data()?['accountNumber'] as String?;
           if (storedAccountNumber != null) {
-            final cleanedStoredAccountNumber = storedAccountNumber.replaceAll(RegExp(r'[^0-9]'), '');
+            final cleanedStoredAccountNumber = storedAccountNumber.replaceAll(
+              RegExp(r'[^0-9]'),
+              '',
+            );
             if (cleanedStoredAccountNumber == cleanedInputAccountNumber) {
-              foundRecipientName = userDoc.data()?['name'] ?? '이름 없음';
+              foundRecipientName = userDoc.data()['name'] ?? '이름 없음';
               foundRecipientUserId = userDoc.id;
               break;
             }
@@ -125,7 +139,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           _validatedRecipientUserId = foundRecipientUserId;
           _recipientName = foundRecipientName; // 받는 사람 이름 설정
         });
-        _showSnackBar('계좌가 확인되었습니다: $foundRecipientName', isError: false);
       } else {
         setState(() {
           _isAccountValidated = false;
@@ -184,7 +197,8 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
 
   void _onNumberTap(String number) {
     setState(() {
-      if (_enteredAmount.length < 15) { // 최대 길이 제한
+      if (_enteredAmount.length < 15) {
+        // 최대 길이 제한
         _enteredAmount += number;
       }
     });
@@ -221,46 +235,90 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       final batch = firestore.batch();
 
       // 1. 내 계좌에서 금액 차감
-      final myAccountRef = firestore.collection('users').doc(_userId).collection('accounts').doc('main');
+      final myAccountRef = firestore
+          .collection('users')
+          .doc(_userId)
+          .collection('accounts')
+          .doc('main');
       batch.update(myAccountRef, {'balance': FieldValue.increment(-amount)});
 
       // 2. 거래 내역 추가 (내 계좌)
-      batch.set(firestore.collection('users').doc(_userId).collection('transactions').doc(), {
-        'type': '송금',
-        'amount': amount,
-        'timestamp': Timestamp.now(),
-        'description': _toMeMemoController.text.isNotEmpty ? _toMeMemoController.text : '${_recipientNameDisplayController.text}님께 송금',
-        'is_deposit': false,
-        'balance_after': _currentBalance - amount,
-        'memo_to_recipient': _toRecipientMemoController.text,
-        'memo_to_me': _toMeMemoController.text,
-        'senderName': _senderName, // 보내는 사람 이름 추가
-        'recipientName': _recipientName, // 받는 사람 이름 추가
-      });
+      batch.set(
+        firestore
+            .collection('users')
+            .doc(_userId)
+            .collection('transactions')
+            .doc(),
+        {
+          'type': '송금',
+          'amount': amount,
+          'timestamp': Timestamp.now(),
+          'description':
+              _toMeMemoController.text.isNotEmpty
+                  ? _toMeMemoController.text
+                  : '${_recipientNameDisplayController.text}님께 송금',
+          'is_deposit': false,
+          'balance_after': _currentBalance - amount,
+          'memo_to_recipient': _toRecipientMemoController.text,
+          'memo_to_me': _toMeMemoController.text,
+          'senderName': _senderName, // 보내는 사람 이름 추가
+          'recipientName': _recipientName, // 받는 사람 이름 추가
+        },
+      );
 
       // 3. 받는 사람 계좌에 금액 추가
-      final recipientAccountRef = firestore.collection('users').doc(_validatedRecipientUserId).collection('accounts').doc('main');
+      final recipientAccountRef = firestore
+          .collection('users')
+          .doc(_validatedRecipientUserId)
+          .collection('accounts')
+          .doc('main');
       final recipientDoc = await recipientAccountRef.get();
-      double currentRecipientBalance = (recipientDoc.data()?['balance'] ?? 0).toDouble();
+      double currentRecipientBalance =
+          (recipientDoc.data()?['balance'] ?? 0).toDouble();
       double newRecipientBalance = currentRecipientBalance + amount;
       batch.update(recipientAccountRef, {'balance': newRecipientBalance});
 
       // 4. 거래 내역 추가 (받는 사람 계좌)
-      batch.set(firestore.collection('users').doc(_validatedRecipientUserId).collection('transactions').doc(), {
-        'type': '입금',
-        'amount': amount,
-        'timestamp': Timestamp.now(),
-        'description': _toRecipientMemoController.text.isNotEmpty ? _toRecipientMemoController.text : '${_senderName ?? '누군가'}님으로부터 입금',
-        'is_deposit': true,
-        'balance_after': newRecipientBalance,
-        'memo_from_sender': _toRecipientMemoController.text,
-        'memo_to_me': _toMeMemoController.text,
-        'senderName': _senderName, // 보내는 사람 이름 추가
-        'recipientName': _recipientName, // 받는 사람 이름 추가
-      });
+      batch.set(
+        firestore
+            .collection('users')
+            .doc(_validatedRecipientUserId)
+            .collection('transactions')
+            .doc(),
+        {
+          'type': '입금',
+          'amount': amount,
+          'timestamp': Timestamp.now(),
+          'description':
+              _toRecipientMemoController.text.isNotEmpty
+                  ? _toRecipientMemoController.text
+                  : '${_senderName ?? '누군가'}님으로부터 입금',
+          'is_deposit': true,
+          'balance_after': newRecipientBalance,
+          'memo_from_sender': _toRecipientMemoController.text,
+          'memo_to_me': _toMeMemoController.text,
+          'senderName': _senderName, // 보내는 사람 이름 추가
+          'recipientName': _recipientName, // 받는 사람 이름 추가
+        },
+      );
+
+      // 5. 받는 사람에게 알림 추가
+      batch.set(
+        firestore
+            .collection('users')
+            .doc(_validatedRecipientUserId)
+            .collection('notifications')
+            .doc(),
+        {
+          'message':
+              '${_senderName ?? '누군가'}님으로부터 ${NumberFormat('#,###').format(amount)}원 입금되었습니다.',
+          'timestamp': Timestamp.now(),
+          'read': false,
+        },
+      );
 
       await batch.commit();
-      _showSnackBar('송금이 완료되었습니다!', isError: false);
+
       Navigator.pop(context);
     } catch (e) {
       _showSnackBar('송금 중 오류가 발생했습니다: $e');
@@ -282,12 +340,13 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       appBar: AppBar(
         title: const Text('송금하기'),
         backgroundColor: Theme.of(context).primaryColor,
-        leading: _currentStep != SendMoneyStep.accountValidation
-            ? IconButton(
-                icon: const Icon(Icons.arrow_back),
-                onPressed: _goToPreviousStep,
-              )
-            : null,
+        leading:
+            _currentStep != SendMoneyStep.accountValidation
+                ? IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: _goToPreviousStep,
+                )
+                : null,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
@@ -336,7 +395,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             icon: Icons.person,
             readOnly: true,
           ),
-          const SizedBox(height: 40),
+          const SizedBox(height: 15),
           _buildNextButton(onPressed: _goToNextStep),
         ],
       ],
@@ -348,7 +407,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         _buildSectionTitle('송금 금액'),
-        const SizedBox(height: 20),
+        const SizedBox(height: 5),
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
@@ -404,8 +463,11 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   }
 
   Widget _buildTransactionSummary() {
-    final formattedAmount = NumberFormat('#,###').format(double.tryParse(_enteredAmount) ?? 0);
+    final formattedAmount = NumberFormat(
+      '#,###',
+    ).format(double.tryParse(_enteredAmount) ?? 0);
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Theme.of(context).primaryColor.withOpacity(0.1),
@@ -461,18 +523,20 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         border: Border.all(color: Theme.of(context).primaryColor),
       ),
       child: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('users')
-            .doc(_userId)
-            .collection('accounts')
-            .doc('main')
-            .snapshots(),
+        stream:
+            FirebaseFirestore.instance
+                .collection('users')
+                .doc(_userId)
+                .collection('accounts')
+                .doc('main')
+                .snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          
-          final accountData = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+
+          final accountData =
+              snapshot.data!.data() as Map<String, dynamic>? ?? {};
           final balance = accountData['balance'] ?? _currentBalance;
           final accountNumber = accountData['accountNumber'] ?? '계좌 정보 없음';
 
@@ -535,11 +599,16 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+          borderSide: BorderSide(
+            color: Theme.of(context).primaryColor,
+            width: 2,
+          ),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(color: Theme.of(context).primaryColor.withOpacity(0.5)),
+          borderSide: BorderSide(
+            color: Theme.of(context).primaryColor.withOpacity(0.5),
+          ),
         ),
         filled: true,
         fillColor: Colors.white,
@@ -555,7 +624,10 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       icon: Icons.account_balance,
       readOnly: true,
       onTap: _showBankSelectionDialog,
-      suffixIcon: Icon(Icons.arrow_drop_down, color: Theme.of(context).primaryColor),
+      suffixIcon: Icon(
+        Icons.arrow_drop_down,
+        color: Theme.of(context).primaryColor,
+      ),
     );
   }
 
@@ -602,7 +674,10 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       suffixIcon: IconButton(
-        icon: Icon(Icons.search, color: Theme.of(context).primaryColor), // 앱 테마 색상 사용
+        icon: Icon(
+          Icons.search,
+          color: Theme.of(context).primaryColor,
+        ), // 앱 테마 색상 사용
         onPressed: _validateAccount,
       ),
     );
@@ -644,9 +719,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.white,
         foregroundColor: Theme.of(context).primaryColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 2,
         padding: const EdgeInsets.all(20),
       ),
@@ -663,9 +736,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey[200],
         foregroundColor: Colors.black54,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 2,
         padding: const EdgeInsets.all(20),
       ),
@@ -682,9 +753,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.grey[200],
         foregroundColor: Colors.black54,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
         elevation: 2,
         padding: const EdgeInsets.all(20),
       ),
@@ -695,7 +764,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   Widget _buildNextButton({required VoidCallback onPressed}) {
     return SizedBox(
       width: double.infinity,
-      height: 55,
+      height: 45,
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
@@ -707,7 +776,11 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         child: const Text(
           '다음',
-          style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 20,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -728,7 +801,11 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         ),
         child: const Text(
           '송금하기',
-          style: TextStyle(fontSize: 20, color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 20,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
