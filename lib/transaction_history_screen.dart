@@ -214,7 +214,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                         ) {
                           final transaction =
                               transactions[index].data() as Map<String, dynamic>;
-                          final amount = transaction['amount'] as int;
+                          final amount = transaction['amount'] as num;
                           final isDeposit = transaction['type'] == '입금';
 
                           return Column(
