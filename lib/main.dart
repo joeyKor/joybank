@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'login_screen.dart';
 import 'pin_screen.dart';
+import 'admin_screen.dart'; // AdminScreen 임포트
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

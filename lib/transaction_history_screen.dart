@@ -96,7 +96,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              accountNumber,
+                              accountNumber, // 포맷팅 함수 제거
                               style: TextStyle(
                                 color: Colors.black.withOpacity(0.8),
                                 fontSize: 16,

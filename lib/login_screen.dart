@@ -5,6 +5,7 @@ import 'package:joybank/main_screen.dart';
 import 'package:joybank/sign_up_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:joybank/pin_input_dialog.dart'; // PinInputDialog 임포트
+import 'package:joybank/admin_screen.dart'; // AdminScreen 임포트
 
 class LoginScreen extends StatefulWidget {
   final bool fromForgotPin; // PIN 잊어버리기 경로에서 왔는지 여부
@@ -36,6 +37,15 @@ class _LoginScreenState extends State<LoginScreen> {
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('userPin', password); // PIN 저장
         await prefs.setString('email', email); // 이메일 저장
+
+        // 관리자 계정 확인
+        if (email == 'admin@joybank.com' && password == '369369') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const AdminScreen()), // AdminScreen으로 이동
+          );
+          return; // 관리자 로그인 성공 시 일반 로그인 로직 건너뛰기
+        }
 
         if (widget.fromForgotPin) {
           // PIN 잊어버리기 경로에서 왔다면 새 PIN 설정 다이얼로그 표시

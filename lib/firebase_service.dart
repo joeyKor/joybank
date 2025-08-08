@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:math'; // 추가
 
 class FirebaseService {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -54,12 +55,13 @@ class FirebaseService {
   // 계좌 정보 저장
   static Future<void> saveAccountInfo(String userId, Map<String, dynamic> accountData) async {
     try {
+      // accountNumber 필드가 없으면 생성하지 않고, 기존 값이 있으면 그대로 유지
       await _firestore
           .collection('users')
           .doc(userId)
           .collection('accounts')
           .doc('main')
-          .set(accountData);
+          .set(accountData, SetOptions(merge: true)); // 기존 필드를 덮어쓰지 않고 병합
     } catch (e) {
       print('Error saving account info: $e');
       rethrow;
@@ -254,6 +256,132 @@ class FirebaseService {
       });
     } catch (e) {
       print('Error depositing money in Firebase: $e');
+      rethrow;
+    }
+  }
+
+  // 모든 사용자에게 이자 지급
+  static Future<void> payInterestToAllUsers(double annualInterestRate) async {
+    try {
+      final usersSnapshot = await _firestore.collection('users').get();
+      for (var userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        print('Processing interest for user: $userId');
+
+        // 1. 현재 계좌 정보 가져오기
+        Map<String, dynamic>? accountInfo = await getAccountInfo(userId);
+        if (accountInfo == null || !accountInfo.containsKey('balance')) {
+          print('Account info not found or balance missing for user: $userId');
+          continue; // 다음 사용자로 건너뛰기
+        }
+        int currentBalance = accountInfo['balance'] as int;
+
+        // 2. 이자 계산 (월별 이자 계산 예시)
+        // 교육용 앱이므로 단순화된 계산
+        int interestAmount = (currentBalance * annualInterestRate / 12).round();
+
+        if (interestAmount <= 0) {
+          print('Calculated interest amount is zero or negative for user: $userId. Skipping.');
+          continue; // 이자가 0 이하면 지급하지 않음
+        }
+
+        // 3. 계좌에 이자 입금
+        int newBalance = currentBalance + interestAmount;
+        String? existingAccountNumber = accountInfo['accountNumber'] as String?;
+        await saveAccountInfo(userId, {
+          'balance': newBalance,
+          'accountNumber': existingAccountNumber, // 기존 계좌 번호 전달
+        });
+
+        // 4. 이자 지급 내역 기록
+        await saveTransaction(userId, {
+          'type': 'interest',
+          'amount': interestAmount,
+          'description': '이자 지급',
+          'timestamp': FieldValue.serverTimestamp(),
+          'balance_after': newBalance, // 필드 이름 변경
+          'source': '이자',
+        });
+
+        print('Interest of $interestAmount paid to user $userId. New balance: $newBalance');
+      }
+      print('All interest payments completed.');
+    } catch (e) {
+      print('Error paying interest to all users: $e');
+      rethrow;
+    }
+  }
+
+  // 모든 사용자 정보와 계좌 정보 가져오기
+  static Future<List<Map<String, dynamic>>> getAllUsersWithAccountInfo() async {
+    try {
+      final usersSnapshot = await _firestore.collection('users').get();
+      final List<Map<String, dynamic>> usersWithAccounts = [];
+
+      for (var userDoc in usersSnapshot.docs) {
+        final userId = userDoc.id;
+        final userData = userDoc.data();
+        final accountInfo = await getAccountInfo(userId);
+
+        if (accountInfo != null) {
+          usersWithAccounts.add({
+            'uid': userId,
+            'name': userData['name'],
+            'email': userData['email'],
+            'school': userData['school'], // Add school
+            'accountNumber': accountInfo['accountNumber'],
+            'balance': accountInfo['balance'],
+          });
+        }
+      }
+      return usersWithAccounts;
+    } catch (e) {
+      print('Error getting all users with account info: $e');
+      rethrow;
+    }
+  }
+
+  // 관리자가 사용자에게 송금
+  static Future<void> sendMoneyAsAdmin(String userId, int amount, String description) async {
+    try {
+      // 1. 사용자 계좌 정보 가져오기
+      DocumentSnapshot accountDoc = await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('accounts')
+          .doc('main')
+          .get();
+
+      if (!accountDoc.exists) {
+        throw Exception('User account not found');
+      }
+
+      // 2. 잔액 업데이트
+      int currentBalance = (accountDoc.data() as Map<String, dynamic>)['balance'] ?? 0;
+      int newBalance = currentBalance + amount;
+
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('accounts')
+          .doc('main')
+          .update({'balance': newBalance});
+
+      // 3. 거래 내역 기록
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('transactions')
+          .add({
+        'type': 'deposit',
+        'amount': amount,
+        'description': description,
+        'timestamp': FieldValue.serverTimestamp(),
+        'balance_after': newBalance,
+        'senderName': '관리자',
+      });
+    } catch (e) {
+      print('Error sending money to user: $e');
       rethrow;
     }
   }
