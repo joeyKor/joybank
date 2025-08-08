@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'currency_input_formatter.dart'; // 통화 포맷터 임포트
+import 'custom_notification.dart'; // 커스텀 알림 위젯 임포트
 
 // 송금 단계 Enum 정의
 enum SendMoneyStep { accountValidation, amountInput, memoInput }
@@ -86,7 +87,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
 
   Future<void> _validateAccount() async {
     if (_selectedBank != '조이뱅크') {
-      _showSnackBar('유효하지 않은 계좌번호입니다.');
+              showCustomNotification(context: context, message: '유효하지 않은 계좌번호입니다.');
       setState(() {
         _isAccountValidated = false;
         _recipientNameDisplayController.clear();
@@ -101,7 +102,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         .replaceAll(RegExp(r'[^0-9]'), '');
 
     if (cleanedInputAccountNumber.isEmpty) {
-      _showSnackBar('계좌번호를 입력해주세요.');
+      showCustomNotification(context: context, message: '계좌번호를 입력해주세요.');
       return;
     }
 
@@ -146,7 +147,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           _validatedRecipientUserId = null;
           _recipientName = null;
         });
-        _showSnackBar('유효하지 않은 계좌번호입니다.');
+        showCustomNotification(context: context, message: '유효하지 않은 계좌번호입니다.');
       }
     } catch (e) {
       setState(() {
@@ -155,7 +156,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         _validatedRecipientUserId = null;
         _recipientName = null;
       });
-      _showSnackBar('계좌 확인 중 오류가 발생했습니다: $e');
+      showCustomNotification(context: context, message: '계좌 확인 중 오류가 발생했습니다: $e');
     }
   }
 
@@ -165,16 +166,16 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         if (_isAccountValidated && _validatedRecipientUserId != null) {
           _currentStep = SendMoneyStep.amountInput;
         } else {
-          _showSnackBar('계좌 유효성 검사를 먼저 완료해주세요.');
+          showCustomNotification(context: context, message: '계좌 유효성 검사를 먼저 완료해주세요.');
         }
       } else if (_currentStep == SendMoneyStep.amountInput) {
         final amount = double.tryParse(_enteredAmount.replaceAll(',', ''));
         if (amount == null || amount <= 0) {
-          _showSnackBar('유효한 금액을 입력해주세요.');
+          showCustomNotification(context: context, message: '유효한 금액을 입력해주세요.');
           return;
         }
         if (amount > _currentBalance) {
-          _showSnackBar('잔액이 부족합니다.');
+          showCustomNotification(context: context, message: '잔액이 부족합니다.');
           return;
         }
         // 메모 기본값 설정
@@ -221,12 +222,12 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   void _sendMoney() async {
     final amount = double.tryParse(_enteredAmount.replaceAll(',', ''));
     if (amount == null || amount <= 0) {
-      _showSnackBar('유효한 금액을 입력해주세요.');
+      showCustomNotification(context: context, message: '유효한 금액을 입력해주세요.');
       return;
     }
 
     if (amount > _currentBalance) {
-      _showSnackBar('잔액이 부족합니다.');
+      showCustomNotification(context: context, message: '잔액이 부족합니다.');
       return;
     }
 
@@ -321,18 +322,11 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
 
       Navigator.pop(context);
     } catch (e) {
-      _showSnackBar('송금 중 오류가 발생했습니다: $e');
+      showCustomNotification(context: context, message: '송금 중 오류가 발생했습니다: $e');
     }
   }
 
-  void _showSnackBar(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-      ),
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {

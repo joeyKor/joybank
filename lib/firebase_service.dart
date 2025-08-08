@@ -247,7 +247,7 @@ class FirebaseService {
           print('Account does not exist. Creating new account with balance: $amount');
           transaction.set(accountRef, {'balance': amount});
         } else {
-          int currentBalance = (accountSnapshot.data() as Map<String, dynamic>)['balance'] as int? ?? 0;
+          num currentBalance = (accountSnapshot.data() as Map<String, dynamic>)['balance'] as num? ?? 0;
           print('Current balance: $currentBalance. Adding $amount.');
           transaction.update(accountRef, {'balance': currentBalance + amount});
         }
