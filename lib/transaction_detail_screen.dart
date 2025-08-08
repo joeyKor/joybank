@@ -37,19 +37,21 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     super.dispose();
   }
 
-  void _toggleMemoEdit() async {
+    void _toggleMemoEdit() async {
     if (_isEditingMemo) {
       // Save the memo to Firebase
       final prefs = await SharedPreferences.getInstance();
       final userId = prefs.getString('userId');
       if (userId != null) {
-        await FirebaseService.updateTransactionMemo(
-          userId,
-          widget.transactionId,
-          _memoController.text,
-        );
+        // 'memo_to_me' 필드 업데이트
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(userId)
+            .collection('transactions')
+            .doc(widget.transactionId)
+            .update({'memo_to_me': _memoController.text});
       }
-      _transactionData['memo'] = _memoController.text;
+      _transactionData['memo_to_me'] = _memoController.text;
     }
     setState(() {
       _isEditingMemo = !_isEditingMemo;
@@ -58,8 +60,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final amount = _transactionData['amount'] as int;
-    final isDeposit = amount > 0;
+    final isDeposit = _transactionData['type'] == '입금'; // type 필드로 입금/송금 구분
+    final displayAmount = (_transactionData['amount'] as num).abs(); // 금액은 항상 양수로 표시
 
     return Scaffold(
       appBar: AppBar(title: const Text('거래 상세 정보')),
@@ -82,7 +84,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${NumberFormat('#,###').format(amount)}원',
+                    '${NumberFormat('#,###').format(displayAmount)}원',
                     style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -124,7 +126,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              '메모',
+              '나의 메모',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             TextButton(
@@ -139,14 +141,14 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               maxLength: 20,
               style: const TextStyle(color: Colors.grey), // Gray while editing
               decoration: const InputDecoration(
-                hintText: '메모를 입력하세요 (최대 20자)',
+                hintText: '나에게 표시될 메모를 입력하세요 (최대 20자)',
                 counterText: '', // Hide the counter
               ),
             )
             : Text(
-              _transactionData['memo'] != null &&
-                      _transactionData['memo'].isNotEmpty
-                  ? _transactionData['memo']
+              _transactionData['memo_to_me'] != null &&
+                      _transactionData['memo_to_me'].isNotEmpty
+                  ? _transactionData['memo_to_me']
                   : '메모 없음',
               style: const TextStyle(
                 fontSize: 16,
@@ -158,6 +160,22 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   Widget _buildDetailInfoSection() {
+    final isDeposit = _transactionData['type'] == '입금';
+    String descriptionText = _transactionData['description'] ?? '내용 없음';
+
+    // 송금/입금 유형에 따라 메모 표시
+    if (isDeposit) {
+      if (_transactionData['memo_from_sender'] != null &&
+          _transactionData['memo_from_sender'].isNotEmpty) {
+        descriptionText = '${descriptionText} (보낸이 메모: ${_transactionData['memo_from_sender']})';
+      }
+    } else { // 송금
+      if (_transactionData['memo_to_recipient'] != null &&
+          _transactionData['memo_to_recipient'].isNotEmpty) {
+        descriptionText = '${descriptionText} (받는이 메모: ${_transactionData['memo_to_recipient']})';
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -179,10 +197,10 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                   DateTime.now(),
             ),
           ),
-          _buildInfoRow('거래 내용', _transactionData['description'] ?? '내용 없음'),
+          _buildInfoRow('거래 내용', descriptionText),
           _buildInfoRow(
             '거래 금액',
-            '${NumberFormat('#,###').format(_transactionData['amount'] ?? 0)}원',
+            '${NumberFormat('#,###').format((_transactionData['amount'] as num).abs())}원',
           ),
           _buildInfoRow(
             '거래 후 잔액',

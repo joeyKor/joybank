@@ -19,6 +19,7 @@ class _PinScreenState extends State<PinScreen> {
   bool _isLoading = true;
   int _incorrectPinAttempts = 0; // 틀린 PIN 시도 횟수
   static const int _maxIncorrectAttempts = 5; // 최대 허용 횟수
+  String _errorMessage = ''; // 화면에 표시할 오류 메시지
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _PinScreenState extends State<PinScreen> {
   void _onSubmit() async { // async 추가
     if (_pin == _correctPin) {
       _incorrectPinAttempts = 0; // 성공 시 시도 횟수 초기화
+      _errorMessage = ''; // 오류 메시지 초기화
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const MainScreen()),
@@ -65,22 +67,25 @@ class _PinScreenState extends State<PinScreen> {
       setState(() {
         _pin = '';
         _incorrectPinAttempts++;
+        if (_incorrectPinAttempts < _maxIncorrectAttempts) {
+          _errorMessage = 'PIN이 틀렸습니다. (${_incorrectPinAttempts}/$_maxIncorrectAttempts)';
+        } else {
+          _errorMessage = 'PIN 입력 횟수 초과. 로그아웃됩니다.';
+        }
       });
 
       if (_incorrectPinAttempts >= _maxIncorrectAttempts) {
         // 5회 이상 틀렸을 경우 로그아웃 처리
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear(); // 모든 SharedPreferences 데이터 삭제 (로그아웃)
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (Route<dynamic> route) => false,
-        );
-      } else {
-        // 틀렸다는 메시지 표시 (선택 사항)
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PIN이 틀렸습니다. (${_incorrectPinAttempts}/$_maxIncorrectAttempts)')),
-        );
+        // 짧은 지연 후 로그인 화면으로 이동하여 메시지가 보일 시간을 줍니다.
+        Future.delayed(const Duration(seconds: 2), () {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (Route<dynamic> route) => false,
+          );
+        });
       }
     }
   }
@@ -124,6 +129,18 @@ class _PinScreenState extends State<PinScreen> {
                             );
                           }),
                         ),
+                        if (_errorMessage.isNotEmpty) // 오류 메시지 표시
+                          Padding(
+                            padding: const EdgeInsets.only(top: 10.0),
+                            child: Text(
+                              _errorMessage,
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 30), // Add some space
                         TextButton(
                           onPressed: () {
