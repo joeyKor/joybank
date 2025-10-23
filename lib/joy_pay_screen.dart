@@ -97,7 +97,7 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
     String result = '';
     for (int i = 0; i < input.length; i++) {
       if (input[i] == '-') {
-        result += 'd';
+        // 하이픈은 결과에 포함하지 않음
       } else if (input[i].contains(RegExp(r'[0-9]'))) {
         int digit = int.parse(input[i]);
         result += ((digit + 3) % 10).toString();
