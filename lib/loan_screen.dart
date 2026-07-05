@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'loan_ad_detail_screen.dart';
 
 class LoanScreen extends StatelessWidget {
   const LoanScreen({super.key});
@@ -22,10 +23,10 @@ class LoanScreen extends StatelessWidget {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
                 children: [
-                  _buildLoanProduct(context, '신용대출', '최대 2억원', Icons.person, Colors.purple),
-                  _buildLoanProduct(context, '주택담보대출', '최대 10억원', Icons.home, Colors.brown),
-                  _buildLoanProduct(context, '전세자금대출', '보증금의 80%', Icons.house, Colors.teal),
-                  _buildLoanProduct(context, '비상금대출', '최대 300만원', Icons.attach_money, Colors.red),
+                  _buildLoanProduct(context, 'credit', '신용대출', '최대 2억원', Icons.person, Colors.purple),
+                  _buildLoanProduct(context, 'mortgage', '주택담보대출', '최대 10억원', Icons.home, Colors.brown),
+                  _buildLoanProduct(context, 'deposit', '전세자금대출', '보증금의 80%', Icons.house, Colors.teal),
+                  _buildLoanProduct(context, 'emergency', '비상금대출', '최대 300만원', Icons.attach_money, Colors.red),
                 ],
               ),
             ),
@@ -35,12 +36,19 @@ class LoanScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildLoanProduct(BuildContext context, String title, String subtitle, IconData icon, Color color) {
+  Widget _buildLoanProduct(BuildContext context, String type, String title, String subtitle, IconData icon, Color color) {
     return Card(
       elevation: 4,
       color: color,
       child: InkWell(
-        onTap: () {},
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => LoanAdDetailScreen(type: type),
+            ),
+          );
+        },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(

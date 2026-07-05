@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:joybank/pin_input_dialog.dart';
-import 'package:joybank/main_screen.dart';
-import 'package:joybank/custom_notification.dart'; // Custom notification for messages
-import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth 임포트
+import 'package:firebase_auth/firebase_auth.dart';
+import 'pin_input_dialog.dart';
+import 'main_screen.dart';
+import 'custom_notification.dart';
 
 class PinResetScreen extends StatefulWidget {
   const PinResetScreen({super.key});
@@ -18,15 +18,46 @@ class _PinResetScreenState extends State<PinResetScreen> {
   final _emailController = TextEditingController();
   final _nameController = TextEditingController();
   final _birthDateController = TextEditingController();
-  final _schoolController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
     _nameController.dispose();
     _birthDateController.dispose();
-    _schoolController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectBirthDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(2000, 1, 1),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      locale: const Locale('ko', 'KR'),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Colors.blueAccent,
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+            textButtonTheme: TextButtonThemeData(
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.blueAccent,
+              ),
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      setState(() {
+        _birthDateController.text =
+            "${picked.year}-${picked.month.toString().padLeft(2, '0')}-${picked.day.toString().padLeft(2, '0')}";
+      });
+    }
   }
 
   Future<void> _verifyAndResetPin() async {
@@ -34,157 +65,262 @@ class _PinResetScreenState extends State<PinResetScreen> {
       final enteredEmail = _emailController.text.trim();
       final enteredName = _nameController.text.trim();
       final enteredBirthDate = _birthDateController.text.trim();
-      final enteredSchool = _schoolController.text.trim();
-
-      // 현재 로그인된 사용자의 이메일 가져오기
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) {
-        showCustomNotification(context: context, message: '로그인된 사용자가 없습니다.');
-        return;
-      }
-
-      if (currentUser.email != enteredEmail) {
-        showCustomNotification(context: context, message: '입력하신 이메일이 현재 로그인된 계정과 다릅니다.');
-        return;
-      }
 
       try {
-        // Firestore에서 사용자 정보 조회
+        // 1. Query user from Firestore using Email
         final usersSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .where('email', isEqualTo: enteredEmail)
             .get();
 
         if (usersSnapshot.docs.isEmpty) {
-          showCustomNotification(context: context, message: '일치하는 사용자 정보가 없습니다.');
+          if (mounted) {
+            showCustomNotification(context: context, message: '일치하는 사용자 정보가 없습니다.');
+          }
           return;
         }
 
         final userDoc = usersSnapshot.docs.first;
         final userData = userDoc.data();
+        final userUid = userDoc.id;
 
-        if (userData['name'] == enteredName &&
-            userData['birthDate'] == enteredBirthDate &&
-            userData['school'] == enteredSchool) {
-          // 정보 일치 시 새 PIN 설정 다이얼로그 표시
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return PinInputDialog(
-                                  onPinSet: (newPin) async {
-                    // Firebase Firestore에 PIN 업데이트
-                    await FirebaseFirestore.instance
-                        .collection('users')
-                        .doc(currentUser.uid)
-                        .update({'pin': newPin});
+        // 2. Validate Name and Birth Date
+        if (userData['name'] == enteredName && userData['birthDate'] == enteredBirthDate) {
+          final oldPin = userData['pin'];
 
-                    final prefs = await SharedPreferences.getInstance();
-                    await prefs.setString('userPin', newPin); // SharedPreferences에도 새 PIN 저장
-                    showCustomNotification(context: context, message: '새로운 PIN이 설정되었습니다.');
-                    Navigator.of(context).pop(); // PinInputDialog 닫기
-                    Navigator.pushAndRemoveUntil(
-                      context,
-                      MaterialPageRoute(builder: (context) => const MainScreen()),
-                      (Route<dynamic> route) => false, // 모든 이전 라우트 제거
-                    );
+          if (mounted) {
+            // 3. Show dialog to input new PIN
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (BuildContext dialogContext) {
+                return PinInputDialog(
+                  onPinSet: (newPin) async {
+                    try {
+                      // Sign in programmatically to update Firebase Auth password
+                      UserCredential credential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+                        email: enteredEmail,
+                        password: oldPin,
+                      );
+
+                      // Update Firebase Auth password
+                      await credential.user!.updatePassword(newPin);
+
+                      // Update Firestore database document
+                      await FirebaseFirestore.instance
+                          .collection('users')
+                          .doc(userUid)
+                          .update({'pin': newPin});
+
+                      // Update local SharedPreferences state
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('userId', userUid);
+                      await prefs.setString('userPin', newPin);
+                      await prefs.setString('email', enteredEmail);
+                      await prefs.setBool('isLoggedIn', true);
+
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop(); // Close PIN dialog
+                      }
+                      
+                      if (mounted) {
+                        showCustomNotification(context: context, message: '새로운 PIN이 설정되었습니다.');
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(builder: (context) => const MainScreen()),
+                          (Route<dynamic> route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      if (dialogContext.mounted) {
+                        Navigator.of(dialogContext).pop();
+                      }
+                      if (mounted) {
+                        showCustomNotification(
+                          context: context,
+                          message: 'PIN 업데이트에 실패했습니다. 다시 시도해주세요.',
+                        );
+                      }
+                    }
                   },
-                isSettingPin: true,
-              );
-            },
-          );
+                  isSettingPin: true,
+                );
+              },
+            );
+          }
         } else {
-          showCustomNotification(context: context, message: '입력하신 정보가 일치하지 않습니다.');
+          if (mounted) {
+            showCustomNotification(context: context, message: '입력하신 정보가 일치하지 않습니다.');
+          }
         }
       } catch (e) {
-        showCustomNotification(context: context, message: 'PIN 재설정 중 오류 발생: $e');
+        if (mounted) {
+          showCustomNotification(context: context, message: '정보 조회 중 오류가 발생했습니다.');
+        }
       }
     }
+  }
+
+  Widget _buildTextField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    required String? Function(String?) validator,
+    TextInputType keyboardType = TextInputType.text,
+    bool readOnly = false,
+    VoidCallback? onTap,
+  }) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: keyboardType,
+      readOnly: readOnly,
+      onTap: onTap,
+      style: const TextStyle(fontSize: 16, color: Colors.black87),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+        prefixIcon: Icon(icon, color: Colors.blueAccent, size: 22),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey.shade300, width: 1),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: Colors.redAccent, width: 2),
+        ),
+      ),
+      validator: validator,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('PIN 재설정'),
-        backgroundColor: Theme.of(context).primaryColor,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: _emailController,
-                decoration: const InputDecoration(
-                  labelText: '이메일',
-                  hintText: '가입 시 사용한 이메일을 입력하세요',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '이메일을 입력해주세요.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: '이름',
-                  hintText: '가입 시 사용한 이름을 입력하세요',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '이름을 입력해주세요.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _birthDateController,
-                decoration: const InputDecoration(
-                  labelText: '생년월일 (YYYY-MM-DD)',
-                  hintText: '예: 1990-01-01',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '생년월일을 입력해주세요.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _schoolController,
-                decoration: const InputDecoration(
-                  labelText: '학교',
-                  hintText: '가입 시 사용한 학교를 입력하세요',
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return '학교를 입력해주세요.';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _verifyAndResetPin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'PIN 재설정',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
                   ),
                 ),
-                child: const Text(
-                  '정보 확인 및 PIN 재설정',
-                  style: TextStyle(fontSize: 18, color: Colors.white),
+                const SizedBox(height: 8),
+                const Text(
+                  '이메일, 이름, 생년월일을 정확히 입력해주세요.',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: Colors.black54,
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 36),
+
+                _buildTextField(
+                  controller: _emailController,
+                  label: '이메일 주소',
+                  icon: Icons.email_outlined,
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return '이메일을 입력해주세요.';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value.trim())) {
+                      return '올바른 이메일 형식을 입력해주세요.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 18),
+
+                _buildTextField(
+                  controller: _nameController,
+                  label: '이름',
+                  icon: Icons.person_outline,
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return '이름을 입력해주세요.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 18),
+
+                _buildTextField(
+                  controller: _birthDateController,
+                  label: '생년월일 (날짜 선택)',
+                  icon: Icons.calendar_today_outlined,
+                  readOnly: true,
+                  onTap: () => _selectBirthDate(context),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return '생년월일을 선택해주세요.';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 40),
+
+                GestureDetector(
+                  onTap: _verifyAndResetPin,
+                  child: Container(
+                    width: double.infinity,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withOpacity(0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      '정보 확인 및 재설정',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       ),

@@ -3,9 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:joybank/main_screen.dart';
 import 'package:joybank/sign_up_screen.dart';
+import 'package:joybank/pin_reset_screen.dart'; // PinResetScreen 임포트
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:joybank/pin_input_dialog.dart'; // PinInputDialog 임포트
 import 'package:joybank/admin_screen.dart'; // AdminScreen 임포트
+import 'custom_notification.dart';
 
 class LoginScreen extends StatefulWidget {
   final bool fromForgotPin; // PIN 잊어버리기 경로에서 왔는지 여부
@@ -56,8 +58,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPinSet: (newPin) async {
                   // 새 PIN 저장 로직
                   await prefs.setString('userPin', newPin);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('새로운 PIN이 설정되었습니다.')),
+                  showCustomNotification(
+                    context: context,
+                    message: '새로운 PIN이 설정되었습니다.',
                   );
                   Navigator.of(context).pop(); // PinInputDialog 닫기
                   Navigator.pushReplacement(
@@ -78,19 +81,23 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } on FirebaseAuthException catch (e) {
         String message;
-        if (e.code == 'user-not-found') {
-          message = '해당 이메일의 사용자를 찾을 수 없습니다.';
-        } else if (e.code == 'wrong-password') {
-          message = '비밀번호가 틀렸습니다.';
+        if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+          message = '이메일 주소 또는 PIN 비밀번호가 올바르지 않습니다.';
+        } else if (e.code == 'invalid-email') {
+          message = '올바르지 않은 이메일 형식입니다.';
+        } else if (e.code == 'too-many-requests') {
+          message = '너무 많은 로그인 시도가 발생했습니다. 잠시 후 다시 시도해주세요.';
         } else {
-          message = '로그인 실패: ${e.message}';
+          message = '로그인에 실패했습니다. 입력한 정보를 확인해주세요.';
         }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+        showCustomNotification(
+          context: context,
+          message: message,
         );
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('로그인 중 오류 발생: $e')),
+        showCustomNotification(
+          context: context,
+          message: '로그인 중 오류가 발생했습니다. 다시 시도해주세요.',
         );
       }
     }
@@ -123,7 +130,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: _emailController,
                         decoration: InputDecoration(
-                          labelText: 'Email',
+                          labelText: '이메일 주소',
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -132,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your email';
+                            return '이메일을 입력해주세요.';
                           }
                           return null;
                         },
@@ -141,7 +148,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: _pinController,
                         decoration: InputDecoration(
-                          labelText: 'PIN',
+                          labelText: 'PIN 비밀번호',
                           filled: true,
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
@@ -153,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         maxLength: 6,
                         validator: (value) {
                           if (value == null || value.isEmpty) {
-                            return 'Please enter your PIN';
+                            return 'PIN 번호를 입력해주세요.';
                           }
                           return null;
                         },
@@ -171,20 +178,38 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     minimumSize: const Size(double.infinity, 50),
                   ),
-                  child: const Text('Login', style: TextStyle(fontSize: 18)),
+                  child: const Text('로그인', style: TextStyle(fontSize: 18)),
                 ),
                 const SizedBox(height: 16),
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SignUpScreen()),
-                    );
-                  },
-                  child: const Text(
-                    'Don\'t have an account? Sign Up',
-                    style: TextStyle(color: Colors.blue),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const PinResetScreen()),
+                        );
+                      },
+                      child: const Text(
+                        'PIN 재설정',
+                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const Text('  |  ', style: TextStyle(color: Colors.grey)),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const SignUpScreen()),
+                        );
+                      },
+                      child: const Text(
+                        '계좌 개설',
+                        style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

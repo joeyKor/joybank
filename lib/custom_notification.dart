@@ -64,20 +64,26 @@ void showCustomNotification({
   required String message,
 }) {
   OverlayEntry? overlayEntry;
+  bool isRemoved = false;
+
+  void removeOverlay() {
+    if (!isRemoved) {
+      isRemoved = true;
+      overlayEntry?.remove();
+    }
+  }
 
   overlayEntry = OverlayEntry(
     builder:
         (context) => CustomNotification(
           message: message,
-          onDismiss: () {
-            overlayEntry?.remove();
-          },
+          onDismiss: removeOverlay,
         ),
   );
 
   Overlay.of(context).insert(overlayEntry);
 
   Future.delayed(const Duration(seconds: 3), () {
-    overlayEntry?.remove();
+    removeOverlay();
   });
 }

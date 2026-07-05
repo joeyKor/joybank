@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'insurance_ad_detail_screen.dart';
 
 class InsuranceScreen extends StatelessWidget {
   const InsuranceScreen({super.key});
@@ -14,6 +15,7 @@ class InsuranceScreen extends StatelessWidget {
         children: [
           _buildInsuranceCard(
             context,
+            type: 'medical',
             title: '실손 의료비 보험',
             subtitle: '병원비 걱정, 이젠 그만!',
             icon: Icons.local_hospital,
@@ -21,6 +23,7 @@ class InsuranceScreen extends StatelessWidget {
           ),
           _buildInsuranceCard(
             context,
+            type: 'car',
             title: '자동차 보험',
             subtitle: '안전 운전을 위한 필수 선택',
             icon: Icons.directions_car,
@@ -28,6 +31,7 @@ class InsuranceScreen extends StatelessWidget {
           ),
           _buildInsuranceCard(
             context,
+            type: 'travel',
             title: '여행자 보험',
             subtitle: '전 세계 어디서든 든든하게',
             icon: Icons.flight,
@@ -38,32 +42,43 @@ class InsuranceScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInsuranceCard(BuildContext context, {required String title, required String subtitle, required IconData icon, required Color color}) {
+  Widget _buildInsuranceCard(BuildContext context, {required String type, required String title, required String subtitle, required IconData icon, required Color color}) {
     return Card(
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 16),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: color,
-              child: Icon(icon, size: 30, color: Colors.white),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => InsuranceAdDetailScreen(type: type),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: Colors.grey)),
-                ],
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 30,
+                backgroundColor: color,
+                child: Icon(icon, size: 30, color: Colors.white),
               ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.grey),
-          ],
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: const TextStyle(color: Colors.grey)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward_ios, color: Colors.grey),
+            ],
+          ),
         ),
       ),
     );

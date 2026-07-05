@@ -1,4 +1,7 @@
 def simple_decrypt(encrypted_string):
+    if encrypted_string.startswith("pay"):
+        return encrypted_string[3:]
+        
     decrypted_string = ""
     for char in encrypted_string:
         if char == 'd':
