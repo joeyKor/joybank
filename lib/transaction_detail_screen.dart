@@ -28,7 +28,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   void initState() {
     super.initState();
     _transactionData = Map.from(widget.transaction);
-    _memoController = TextEditingController(text: _transactionData['memo']);
+    _memoController = TextEditingController(
+      text: _transactionData['memo_to_me'] ?? _transactionData['memo'] ?? '',
+    );
   }
 
   @override

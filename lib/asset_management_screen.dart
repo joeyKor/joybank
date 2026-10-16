@@ -92,34 +92,24 @@ class _AssetManagementScreenState extends State<AssetManagementScreen> with Sing
           userFundTotal += (fDoc.data()['amount'] ?? 0) as int;
         }
 
-        // 3-1. 실제 보유한 주식 총액 계산하기 (데이터가 없으면 Firestore에 기본 더미 생성)
+        // 3-1. 실제 보유한 주식 총액 계산하기
         int userStockTotal = 0;
-        final stocksRef = FirebaseFirestore.instance
+        final stocksSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
-            .collection('stocks');
-        var stocksSnapshot = await stocksRef.get();
-        if (stocksSnapshot.docs.isEmpty) {
-          await stocksRef.doc('samsung').set({'name': '삼성전자', 'amount': 1500000});
-          await stocksRef.doc('apple').set({'name': '애플', 'amount': 800000});
-          stocksSnapshot = await stocksRef.get();
-        }
+            .collection('stocks')
+            .get();
         for (var sDoc in stocksSnapshot.docs) {
           userStockTotal += (sDoc.data()['amount'] ?? 0) as int;
         }
 
-        // 3-2. 실제 보유한 외화 총액 계산하기 (데이터가 없으면 Firestore에 기본 더미 생성)
+        // 3-2. 실제 보유한 외화 총액 계산하기
         int userForeignTotal = 0;
-        final foreignRef = FirebaseFirestore.instance
+        final foreignSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(userId)
-            .collection('foreign_assets');
-        var foreignSnapshot = await foreignRef.get();
-        if (foreignSnapshot.docs.isEmpty) {
-          await foreignRef.doc('usd').set({'name': '미국 달러 (USD)', 'amount': 500000});
-          await foreignRef.doc('jpy').set({'name': '일본 엔화 (JPY)', 'amount': 200000});
-          foreignSnapshot = await foreignRef.get();
-        }
+            .collection('foreign_assets')
+            .get();
         for (var frDoc in foreignSnapshot.docs) {
           userForeignTotal += (frDoc.data()['amount'] ?? 0) as int;
         }

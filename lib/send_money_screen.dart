@@ -920,9 +920,9 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           showCustomNotification(context: context, message: '잔액이 부족합니다.');
           return;
         }
-        // 메모 기본값 설정
-        _toRecipientMemoController.text = _senderName ?? '';
-        _toMeMemoController.text = _recipientName ?? '';
+        // 메모 기본값: 사용자가 직접 입력하도록 빈칸으로 초기화
+        _toRecipientMemoController.clear();
+        _toMeMemoController.clear();
         _currentStep = SendMoneyStep.memoInput;
       }
     });
@@ -1101,6 +1101,12 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           .doc('main');
       batch.update(myAccountRef, {'balance': FieldValue.increment(-amount)});
 
+      final toMeMemo = _toMeMemoController.text.trim();
+      final toRecipientMemo = _toRecipientMemoController.text.trim();
+      final recipientDisplayName = _recipientNameDisplayController.text.isNotEmpty
+          ? _recipientNameDisplayController.text
+          : (_recipientName ?? '받는분');
+
       // 2. 거래 내역 추가 (내 계좌)
       batch.set(
         firestore
@@ -1113,13 +1119,13 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           'amount': amount,
           'timestamp': Timestamp.now(),
           'description':
-              _toMeMemoController.text.isNotEmpty
-                  ? _toMeMemoController.text
-                  : '${_recipientNameDisplayController.text}님께 송금',
+              toMeMemo.isNotEmpty
+                  ? toMeMemo
+                  : '$recipientDisplayName님께 송금',
           'is_deposit': false,
           'balance_after': _currentBalance - amount,
-          'memo_to_recipient': _toRecipientMemoController.text,
-          'memo_to_me': _toMeMemoController.text,
+          'memo_to_recipient': toRecipientMemo,
+          'memo_to_me': toMeMemo,
           'senderName': _senderName,
           'recipientName': _recipientName,
         },
@@ -1152,12 +1158,12 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             'amount': amount,
             'timestamp': Timestamp.now(),
             'description':
-                _toRecipientMemoController.text.isNotEmpty
-                    ? _toRecipientMemoController.text
+                toRecipientMemo.isNotEmpty
+                    ? toRecipientMemo
                     : '${_senderName ?? '누군가'}님으로부터 입금',
             'is_deposit': true,
-            'memo_from_sender': _toRecipientMemoController.text,
-            'memo_to_me': _toMeMemoController.text,
+            'memo_from_sender': toRecipientMemo,
+            'memo_to_me': '', // 상대방의 자체 메모는 기본적으로 비어있음
             'senderName': _senderName,
             'recipientName': _recipientName,
           },
