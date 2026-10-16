@@ -179,8 +179,9 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
+        color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

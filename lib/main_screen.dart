@@ -1,4 +1,7 @@
 
+import 'dart:ui' as ui;
+import 'package:flutter/rendering.dart';
+import 'package:gal/gal.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,7 +83,7 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -350,6 +353,7 @@ class _MainScreenState extends State<MainScreen> {
 
   // --- 통장사본 다이얼로그 (증서 디자인) ---
   void _showAccountCertificate(BuildContext context, String accountType, String accountNumber, String balance) {
+    final GlobalKey boundaryKey = GlobalKey();
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -372,108 +376,126 @@ class _MainScreenState extends State<MainScreen> {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // 상단 헤더
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1E293B),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(24),
-                          topRight: Radius.circular(24),
+                    RepaintBoundary(
+                      key: boundaryKey,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(24),
+                            topRight: Radius.circular(24),
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        children: [
-                          const Icon(Icons.account_balance_rounded, color: Colors.amber, size: 32),
-                          const SizedBox(height: 8),
-                          const Text(
-                            '계좌 개설 확인서',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'JoyBank Account Certificate',
-                            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, letterSpacing: 0.5),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // 서류 본문 영역
-                    Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Column(
-                        children: [
-                          // 격자 형태의 증서 정보
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF8FAFC),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Column(
-                              children: [
-                                _buildCertRow('예 금 주', ownerName),
-                                const Divider(height: 20),
-                                _buildCertRow('계좌번호', accountNumber),
-                                const Divider(height: 20),
-                                _buildCertRow('상 품 명', '조이 스마트 입출금통장'),
-                                const Divider(height: 20),
-                                _buildCertRow('신규일자', '2026년 06월 15일'),
-                                const Divider(height: 20),
-                                _buildCertRow('발행일자', DateFormat('yyyy년 MM월 dd일').format(DateTime.now())),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          
-                          // 증명 안내 문구
-                          Text(
-                            '위 계좌는 조이뱅크(JoyBank)에 개설된 예금거래용 계좌임을 확인합니다.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(fontSize: 13, color: Colors.grey.shade800, fontWeight: FontWeight.w500, height: 1.5),
-                          ),
-                          const SizedBox(height: 24),
-                          
-                          // 발행 기관 및 직인 배치
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Text(
-                                '조이뱅크 주식회사',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
-                              ),
-                              const SizedBox(width: 12),
-                              // 빨간색 원형 직인 위젯
-                              Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.red.shade700, width: 2.5),
+                        clipBehavior: Clip.antiAlias,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // 상단 헤더
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF1E293B),
+                                borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(24),
+                                  topRight: Radius.circular(24),
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    '조이\n뱅크',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.red.shade700,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      height: 1.1,
+                              ),
+                              child: Column(
+                                children: [
+                                  const Icon(Icons.account_balance_rounded, color: Colors.amber, size: 32),
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    '계좌 개설 확인서',
+                                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'JoyBank Account Certificate',
+                                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10, letterSpacing: 0.5),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // 서류 본문 영역
+                            Padding(
+                              padding: const EdgeInsets.all(24.0),
+                              child: Column(
+                                children: [
+                                  // 격자 형태의 증서 정보
+                                  Container(
+                                    padding: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF8FAFC),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(color: Colors.grey.shade200),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        _buildCertRow('예 금 주', ownerName),
+                                        const Divider(height: 20),
+                                        _buildCertRow('계좌번호', accountNumber),
+                                        const Divider(height: 20),
+                                        _buildCertRow('상 품 명', '조이 스마트 입출금통장'),
+                                        const Divider(height: 20),
+                                        _buildCertRow('신규일자', '2026년 06월 15일'),
+                                        const Divider(height: 20),
+                                        _buildCertRow('발행일자', DateFormat('yyyy년 MM월 dd일').format(DateTime.now())),
+                                      ],
                                     ),
                                   ),
-                                ),
+                                  const SizedBox(height: 24),
+                                  
+                                  // 증명 안내 문구
+                                  Text(
+                                    '위 계좌는 조이뱅크(JoyBank)에 개설된 예금거래용 계좌임을 확인합니다.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 13, color: Colors.grey.shade800, fontWeight: FontWeight.w500, height: 1.5),
+                                  ),
+                                  const SizedBox(height: 24),
+                                  
+                                  // 발행 기관 및 직인 배치
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      const Text(
+                                        '조이뱅크 주식회사',
+                                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      // 빨간색 원형 직인 위젯
+                                      Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.red.shade700, width: 2.5),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            '조이\n뱅크',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(
+                                              color: Colors.red.shade700,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              height: 1.1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     
-                    // 하단 닫기 버튼
+                    // 하단 버튼 영역
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -487,20 +509,129 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                       child: SizedBox(
                         height: 48,
-                        child: ElevatedButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1E293B),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                          ),
-                          child: const Text('확인', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () async {
+                                  try {
+                                    final boundary = boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+                                    if (boundary == null) return;
+                                    
+                                    final image = await boundary.toImage(pixelRatio: 3.0);
+                                    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                                    if (byteData == null) return;
+                                    
+                                    final bytes = byteData.buffer.asUint8List();
+                                    await Gal.putImageBytes(bytes);
+                                    
+                                    if (context.mounted) {
+                                      _showSaveResultDialog(context, true);
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      _showSaveResultDialog(context, false, errorMessage: e.toString());
+                                    }
+                                  }
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  side: const BorderSide(color: Color(0xFF1E293B), width: 1.5),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.download_rounded, color: Color(0xFF1E293B), size: 18),
+                                    SizedBox(width: 4),
+                                    Text('이미지 저장', style: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () => Navigator.pop(context),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF1E293B),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
+                                ),
+                                child: const Text('닫기', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 );
               },
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSaveResultDialog(BuildContext context, bool success, {String? errorMessage}) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  success ? Icons.check_circle_rounded : Icons.error_rounded,
+                  color: success ? const Color(0xFF10B981) : const Color(0xFFF43F5E),
+                  size: 56,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  success ? '저장 완료' : '저장 실패',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1E293B),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  success
+                      ? '계좌 개설 확인서가 사진첩(갤러리)에 안전하게 저장되었습니다.'
+                      : '오류가 발생했습니다.\n${errorMessage ?? ""}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E293B),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: const Text(
+                      '확인',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         );

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class PinInputDialog extends StatefulWidget {
   final String title;
@@ -20,111 +19,248 @@ class PinInputDialog extends StatefulWidget {
 }
 
 class _PinInputDialogState extends State<PinInputDialog> {
-  final TextEditingController _pinController = TextEditingController();
+  String _pin = '';
   static const int _pinLength = 6;
 
   String _firstPin = ''; // 첫 번째 입력된 PIN
   bool _isConfirmingPin = false; // 두 번째 PIN 입력 단계인지 여부
 
   void _onNumberTap(String number) {
-    if (_pinController.text.length < _pinLength) {
-      _pinController.text += number;
+    if (_pin.length < _pinLength) {
+      setState(() {
+        _pin += number;
+      });
+      
+      if (_pin.length == _pinLength) {
+        // 모든 PIN 입력 시 자동 확인 진행
+        Future.delayed(const Duration(milliseconds: 150), () {
+          if (mounted) {
+            _onConfirmTap();
+          }
+        });
+      }
     }
   }
 
   void _onBackspaceTap() {
-    if (_pinController.text.isNotEmpty) {
-      _pinController.text =
-          _pinController.text.substring(0, _pinController.text.length - 1);
+    if (_pin.isNotEmpty) {
+      setState(() {
+        _pin = _pin.substring(0, _pin.length - 1);
+      });
     }
   }
 
   void _onConfirmTap() {
     if (widget.isSettingPin) {
       if (!_isConfirmingPin) {
-        // 첫 번째 PIN 입력 완료
-        if (_pinController.text.length == _pinLength) {
+        if (_pin.length == _pinLength) {
           setState(() {
-            _firstPin = _pinController.text;
-            _pinController.clear();
+            _firstPin = _pin;
+            _pin = '';
             _isConfirmingPin = true;
           });
         } else {
-          // PIN 길이가 6자리가 아닐 경우 에러 처리 (예: 스낵바)
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('PIN은 6자리여야 합니다.')),
           );
         }
       } else {
-        // 두 번째 PIN 입력 완료
-        if (_pinController.text == _firstPin) {
+        if (_pin == _firstPin) {
           if (widget.onPinSet != null) {
-            widget.onPinSet!(_pinController.text);
+            widget.onPinSet!(_pin);
           }
-          Navigator.of(context).pop(); // 다이얼로그 닫기
+          Navigator.of(context).pop();
         } else {
-          // PIN 불일치 시 에러 처리
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('PIN이 일치하지 않습니다. 다시 입력해주세요.')),
           );
           setState(() {
-            _pinController.clear();
+            _pin = '';
             _isConfirmingPin = false;
           });
         }
       }
     } else {
-      Navigator.of(context).pop(_pinController.text);
+      Navigator.of(context).pop(_pin);
     }
   }
 
   @override
-  void dispose() {
-    _pinController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(
-          widget.isSettingPin
-              ? (_isConfirmingPin ? 'PIN 확인' : '새 PIN 설정')
-              : widget.title,
-          textAlign: TextAlign.center),
-      content: SingleChildScrollView(
-        child: ListBody(
-          children: <Widget>[
-            Text(
-                widget.isSettingPin
-                    ? (_isConfirmingPin ? '다시 한번 PIN을 입력해주세요.' : '새로운 6자리 PIN을 입력해주세요.')
-                    : widget.message,
-                textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _pinController,
-              decoration: const InputDecoration(labelText: 'PIN'),
-              keyboardType: TextInputType.number,
-              obscureText: true,
-              maxLength: 6,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+    final mediaQuery = MediaQuery.of(context);
+    final screenHeight = mediaQuery.size.height;
+    // 폴드 펼침 모드나 세로가 짧은 화면 대응
+    final bool isCompact = screenHeight < 680;
+    final bool isVeryCompact = screenHeight < 560;
+
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.only(
+            top: 12,
+            left: isCompact ? 16 : 24,
+            right: isCompact ? 16 : 24,
+            bottom: mediaQuery.padding.bottom + (isCompact ? 12 : 24),
+          ),
+          child: SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[300],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                SizedBox(height: isCompact ? 12 : 20),
+                Container(
+                  padding: EdgeInsets.all(isCompact ? 8 : 12),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).primaryColor.withOpacity(0.08),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.lock_outline_rounded,
+                    color: Theme.of(context).primaryColor,
+                    size: isCompact ? 24 : 32,
+                  ),
+                ),
+                SizedBox(height: isCompact ? 10 : 16),
+                Text(
+                  widget.isSettingPin
+                      ? (_isConfirmingPin ? 'PIN 확인' : '새 PIN 설정')
+                      : widget.title,
+                  style: TextStyle(
+                    fontSize: isCompact ? 19 : 22,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.black87,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  widget.isSettingPin
+                      ? (_isConfirmingPin ? '다시 한번 PIN을 입력해주세요.' : '새로운 6자리 PIN을 입력해주세요.')
+                      : widget.message,
+                  style: TextStyle(
+                    fontSize: isCompact ? 13 : 14,
+                    color: Colors.grey[600],
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: isCompact ? 14 : 24),
+                // 동그라미 인디케이터
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(_pinLength, (index) {
+                    final double dotSize = isCompact ? 14 : 16;
+                    return Container(
+                      margin: EdgeInsets.symmetric(horizontal: isCompact ? 6 : 8),
+                      width: dotSize,
+                      height: dotSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: index < _pin.length
+                            ? Theme.of(context).primaryColor
+                            : Colors.grey[300],
+                      ),
+                    );
+                  }),
+                ),
+                SizedBox(height: isCompact ? 16 : 28),
+                // 숫자 키패드 Grid
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    childAspectRatio: isVeryCompact ? 2.0 : (isCompact ? 1.8 : 1.6),
+                    mainAxisSpacing: isCompact ? 6 : 8,
+                    crossAxisSpacing: isCompact ? 6 : 8,
+                  ),
+                  itemCount: 12,
+                  itemBuilder: (context, index) {
+                    if (index < 9) {
+                      return _buildKeypadButton('${index + 1}', isCompact);
+                    } else if (index == 9) {
+                      // 취소 버튼
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Center(
+                            child: Text(
+                              '취소',
+                              style: TextStyle(
+                                fontSize: isCompact ? 15 : 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    } else if (index == 10) {
+                      return _buildKeypadButton('0', isCompact);
+                    } else if (index == 11) {
+                      // 지우기 버튼
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: _onBackspaceTap,
+                          child: Center(
+                            child: Icon(
+                              Icons.backspace_outlined,
+                              size: isCompact ? 18 : 20,
+                              color: Colors.black54,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    return const SizedBox();
+                  },
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      actions: <Widget>[
-        TextButton(
-          child: const Text('취소'),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+    );
+  }
+
+  Widget _buildKeypadButton(String number, bool isCompact) {
+    return Material(
+      color: Colors.grey[50],
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _onNumberTap(number),
+        child: Center(
+          child: Text(
+            number,
+            style: TextStyle(
+              fontSize: isCompact ? 18 : 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
         ),
-        TextButton(
-          child: const Text('확인'),
-          onPressed: _onConfirmTap,
-        ),
-      ],
+      ),
     );
   }
 }

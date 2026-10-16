@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _pinController = TextEditingController();
+  bool _obscurePin = true;
 
   void _login() async {
     if (_formKey.currentState!.validate()) {
@@ -51,8 +52,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
         if (widget.fromForgotPin) {
           // PIN 잊어버리기 경로에서 왔다면 새 PIN 설정 다이얼로그 표시
-          showDialog(
+          showModalBottomSheet(
             context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
             builder: (BuildContext context) {
               return PinInputDialog(
                 onPinSet: (newPin) async {
@@ -106,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -154,9 +157,20 @@ class _LoginScreenState extends State<LoginScreen> {
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscurePin ? Icons.visibility : Icons.visibility_off,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscurePin = !_obscurePin;
+                              });
+                            },
+                          ),
                         ),
                         keyboardType: TextInputType.number,
-                        obscureText: true,
+                        obscureText: _obscurePin,
                         maxLength: 6,
                         validator: (value) {
                           if (value == null || value.isEmpty) {

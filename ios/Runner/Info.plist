@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>계좌 개설 확인서를 사진첩에 저장하기 위해 권한이 필요합니다.</string>
 </dict>
 </plist>

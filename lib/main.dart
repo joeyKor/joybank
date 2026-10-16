@@ -44,6 +44,13 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          foregroundColor: Colors.black87,
+          elevation: 0,
+          surfaceTintColor: Colors.white,
+        ),
         visualDensity: VisualDensity.adaptivePlatformDensity,
         fontFamily: 'Pretendard',
       ),

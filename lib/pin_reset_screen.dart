@@ -90,9 +90,10 @@ class _PinResetScreenState extends State<PinResetScreen> {
 
           if (mounted) {
             // 3. Show dialog to input new PIN
-            showDialog(
+            showModalBottomSheet(
               context: context,
-              barrierDismissible: false,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
               builder: (BuildContext dialogContext) {
                 return PinInputDialog(
                   onPinSet: (newPin) async {
@@ -207,7 +208,7 @@ class _PinResetScreenState extends State<PinResetScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
