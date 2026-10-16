@@ -30,20 +30,31 @@ class MainScreen extends StatefulWidget {
 }
 
 class _MainScreenState extends State<MainScreen> {
-  late PageController _accountPageController;
   late PageController _adPageController;
-  String? _userId; // _email 대신 _userId 사용
+  String? _userId;
   Stream<DocumentSnapshot>? _userStream;
-  User? _currentUser; // 현재 로그인된 사용자 정보를 저장할 변수
-  Stream<int>? _unreadNotificationsStream; // 읽지 않은 알림 수를 위한 스트림
+  User? _currentUser;
+  Stream<int>? _unreadNotificationsStream;
+
+  // NH 스타일 UI 상태 변수
+  bool _isBalanceHidden = false;
+  int _adPageIndex = 0;
+  int _selectedBottomIndex = 2; // 기본: 홈 탭
 
   @override
   void initState() {
     super.initState();
-    _accountPageController = PageController(viewportFraction: 0.9);
-    _adPageController = PageController(viewportFraction: 0.9);
-    _loadUserIdAndUserStream(); // 함수 이름 변경
-    _getCurrentUser(); // 현재 사용자 정보 로드 함수 호출
+    _adPageController = PageController(viewportFraction: 0.92);
+    _adPageController.addListener(() {
+      final page = _adPageController.page?.round() ?? 0;
+      if (page != _adPageIndex) {
+        setState(() {
+          _adPageIndex = page;
+        });
+      }
+    });
+    _loadUserIdAndUserStream();
+    _getCurrentUser();
   }
 
   void _getCurrentUser() {
@@ -53,13 +64,13 @@ class _MainScreenState extends State<MainScreen> {
   void _loadUserIdAndUserStream() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _userId = prefs.getString('userId'); // userId 가져오기
+      _userId = prefs.getString('userId');
       if (_userId != null) {
         _userStream = FirebaseFirestore.instance
             .collection('users')
             .doc(_userId)
             .collection('accounts')
-            .doc('main') // Listen to the main account document
+            .doc('main')
             .snapshots();
 
         _unreadNotificationsStream = FirebaseFirestore.instance
@@ -75,7 +86,6 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   void dispose() {
-    _accountPageController.dispose();
     _adPageController.dispose();
     super.dispose();
   }
@@ -83,16 +93,48 @@ class _MainScreenState extends State<MainScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFE4F4ED),
         elevation: 0,
-        leading: const SizedBox(),
+        scrolledUnderElevation: 0,
+        title: Row(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: const BoxDecoration(
+                color: Color(0xFF005BAC),
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  'JB',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Text(
+              '조이뱅크',
+              style: TextStyle(
+                color: Color(0xFF191F28),
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.black54),
+            icon: const Icon(Icons.person_outline_rounded, color: Color(0xFF333D4B), size: 24),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => MyPageScreen()));
             },
           ),
           StreamBuilder<int>(
@@ -102,164 +144,135 @@ class _MainScreenState extends State<MainScreen> {
               return Stack(
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.notifications, color: Colors.black54),
+                    icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFF333D4B), size: 24),
                     onPressed: () {
                       Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationScreen()));
                     },
                   ),
                   if (unreadCount > 0)
                     Positioned(
-                      right: 11,
-                      top: 11,
+                      right: 10,
+                      top: 10,
                       child: Container(
                         padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          color: Colors.red,
+                          color: const Color(0xFFEF4444),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        constraints: const BoxConstraints(
-                          minWidth: 14,
-                          minHeight: 14,
-                        ),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                         child: Text(
                           '$unreadCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center,
                         ),
                       ),
-                    )
+                    ),
                 ],
               );
             },
-          ),          IconButton(
-            icon: const Icon(Icons.person, color: Colors.black54),
+          ),
+          IconButton(
+            icon: const Icon(Icons.menu_rounded, color: Color(0xFF333D4B), size: 24),
             onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => MyPageScreen()));
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()));
             },
           ),
+          const SizedBox(width: 4),
         ],
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 30),
-              _buildAccountsSection(context),
-              const SizedBox(height: 30),
-              _buildProductsSection(context),
-              const SizedBox(height: 30),
-              _buildMyDataSection(context),
-              const SizedBox(height: 100), // 스피드다이얼 가림 및 모바일 하단 잘림 해결을 위한 마진 확보
-            ],
-          ),
-        ),
-      ),
-      floatingActionButton: SpeedDial(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        activeBackgroundColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF3B82F6), Color(0xFF2563EB)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF2563EB).withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.add, color: Colors.white, size: 28),
-        ),
-        activeChild: Container(
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: const Icon(Icons.close, color: Colors.white, size: 28),
-        ),
-        buttonSize: const Size(56.0, 56.0),
-        visible: true,
-        closeManually: false,
-        curve: Curves.bounceIn,
-        overlayColor: Colors.black,
-        overlayOpacity: 0.4,
-        onOpen: () => print('OPENING DIAL'),
-        onClose: () => print('DIAL CLOSED'),
-        tooltip: 'Speed Dial',
-        heroTag: 'speed-dial-hero-tag',
+      body: Stack(
         children: [
-          SpeedDialChild(
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF6366F1), Color(0xFF3B82F6)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
+          // 상단 은은한 민트 톤 그라데이션 배경
+          Container(
+            height: 240,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFE4F4ED),
+                  Color(0xFFF1F8F5),
+                  Color(0xFFF8FAFC),
+                ],
               ),
-              child: const Icon(Icons.send_rounded, color: Colors.white, size: 24),
             ),
-            backgroundColor: Colors.transparent,
-            elevation: 0.0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            label: '이체',
-            labelBackgroundColor: const Color(0xFF1E293B),
-            labelStyle: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.white),
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const SendMoneyScreen()));
-            },
           ),
-          SpeedDialChild(
-            child: Container(
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(Icons.qr_code_scanner_rounded, color: Colors.white, size: 24),
+          SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAccountsSection(context),
+                const SizedBox(height: 28),
+                _buildProductsSection(context),
+                const SizedBox(height: 28),
+                _buildMyDataSection(context),
+                const SizedBox(height: 40),
+              ],
             ),
-            backgroundColor: Colors.transparent,
-            elevation: 0.0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            label: '조이페이',
-            labelBackgroundColor: const Color(0xFF1E293B),
-            labelStyle: const TextStyle(fontSize: 14.0, fontWeight: FontWeight.bold, color: Colors.white),
-            onTap: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const JoyPayScreen()));
-            },
           ),
         ],
+      ),
+      bottomNavigationBar: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFF1F5F9), width: 1)),
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _selectedBottomIndex,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          type: BottomNavigationBarType.fixed,
+          selectedItemColor: const Color(0xFF191F28),
+          unselectedItemColor: const Color(0xFF8B95A1),
+          selectedFontSize: 11,
+          unselectedFontSize: 11,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_outlined),
+              activeIcon: Icon(Icons.dashboard_rounded),
+              label: '상품',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.pie_chart_outline_rounded),
+              activeIcon: Icon(Icons.pie_chart_rounded),
+              label: '마이데이터',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home_filled),
+              label: '홈',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.qr_code_scanner_rounded),
+              activeIcon: Icon(Icons.qr_code_scanner_rounded),
+              label: '조이페이',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline_rounded),
+              activeIcon: Icon(Icons.person_rounded),
+              label: '마이페이지',
+            ),
+          ],
+          onTap: (index) {
+            if (index == 0) {
+              _showProductsModal(context);
+            } else if (index == 1) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const AssetManagementScreen(initialTab: 0)),
+              );
+            } else if (index == 2) {
+              setState(() => _selectedBottomIndex = 2);
+            } else if (index == 3) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const JoyPayScreen()));
+            } else if (index == 4) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => MyPageScreen()));
+            }
+          },
+        ),
       ),
     );
   }
@@ -665,83 +678,432 @@ class _MainScreenState extends State<MainScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.0),
-          child: Text(
-            '내 계좌',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        // 상단 헤더: 조이뱅크 / 전체계좌 >
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Text(
+                    '조이뱅크',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF191F28),
+                      letterSpacing: -0.5,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Container(
+                    width: 5,
+                    height: 5,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF00A86B),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  // 전체 계좌 / 통장 관리 바텀시트
+                  _userStream?.first.then((snapshot) {
+                    if (snapshot.exists) {
+                      final accountData = snapshot.data() as Map<String, dynamic>;
+                      final balance = accountData['balance'] ?? 0;
+                      final accountNumber = accountData['accountNumber'] ?? 'N/A';
+                      _showAccountSettings(
+                        context,
+                        '입출금 계좌',
+                        accountNumber,
+                        '${NumberFormat('#,###').format(balance)}원',
+                      );
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    children: [
+                      Text(
+                        '전체계좌',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                      SizedBox(width: 2),
+                      Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF64748B)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 240,
-          child: StreamBuilder<DocumentSnapshot>(
-            stream: _userStream,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (!snapshot.hasData) {
-                return const Center(child: Text('계좌 정보를 찾을 수 없습니다.'));
-              }
-              final accountData = snapshot.data!.data() as Map<String, dynamic>;
-              final balance = accountData['balance'] ?? 0;
-              final accountNumber = accountData['accountNumber'] ?? 'N/A';
-
-              return PageView(
-                controller: _accountPageController,
-                children: [
-                  _buildAccountCard(context, '입출금 계좌', accountNumber, '${NumberFormat('#,###').format(balance)}원', Colors.blue),
-                ],
+        const SizedBox(height: 4),
+        StreamBuilder<DocumentSnapshot>(
+          stream: _userStream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Container(
+                height: 200,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Center(child: CircularProgressIndicator()),
               );
-            },
-          ),
+            }
+            if (!snapshot.hasData || !snapshot.data!.exists) {
+              return Container(
+                height: 200,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Center(child: Text('계좌 정보를 찾을 수 없습니다.')),
+              );
+            }
+            final accountData = snapshot.data!.data() as Map<String, dynamic>;
+            final balance = accountData['balance'] ?? 0;
+            final accountNumber = accountData['accountNumber'] ?? 'N/A';
+
+            return _buildMainAccountCard(context, accountNumber, balance);
+          },
         ),
       ],
     );
   }
 
+  // --- NH 스타일 메인 계좌 카드 ---
+  Widget _buildMainAccountCard(BuildContext context, String accountNumber, dynamic balance) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFE2EBF0), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 16, 0),
+            child: Row(
+              children: [
+                // 파란색 원형 로고 심볼 (NH 느낌)
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF005BAC),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'JB',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      _showAccountSettings(
+                        context,
+                        '입출금 계좌',
+                        accountNumber,
+                        '${NumberFormat('#,###').format(balance)}원',
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(6),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '조이 스마트 입출금통장',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF191F28),
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        SizedBox(width: 4),
+                        Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Color(0xFF64748B)),
+                      ],
+                    ),
+                  ),
+                ),
+                // 새로고침 아이콘
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 22, color: Color(0xFF64748B)),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('잔액 정보가 갱신되었습니다.'),
+                        duration: Duration(milliseconds: 900),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+                // 더보기 점 세 개 (통장 관리)
+                IconButton(
+                  icon: const Icon(Icons.more_vert_rounded, size: 22, color: Color(0xFF64748B)),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  splashRadius: 20,
+                  onPressed: () {
+                    _showAccountSettings(
+                      context,
+                      '입출금 계좌',
+                      accountNumber,
+                      '${NumberFormat('#,###').format(balance)}원',
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          // 계좌번호 표시 및 복사
+          Padding(
+            padding: const EdgeInsets.only(left: 64, top: 2),
+            child: InkWell(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: accountNumber));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('계좌번호가 복사되었습니다: $accountNumber'),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    duration: const Duration(seconds: 1),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '조이뱅크 $accountNumber',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF8B95A1),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.copy_rounded, size: 13, color: Color(0xFF8B95A1)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          // 중앙 잔액 및 잔액 가리기 🔒 아이콘
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _isBalanceHidden ? '••••••원' : '${NumberFormat('#,###').format(balance)}원',
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF191F28),
+                    letterSpacing: -0.6,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      _isBalanceHidden = !_isBalanceHidden;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      _isBalanceHidden ? Icons.lock_rounded : Icons.lock_open_rounded,
+                      size: 17,
+                      color: const Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // 카드 하단 2분할 버튼 (거래내역 | 송금)
+          const Divider(height: 1, thickness: 1, color: Color(0xFFF1F5F9)),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TransactionHistoryScreen()),
+                    );
+                  },
+                  borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(22)),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 17),
+                    child: Center(
+                      child: Text(
+                        '거래내역',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF333D4B),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Container(width: 1, height: 26, color: const Color(0xFFE2E8F0)),
+              Expanded(
+                child: InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SendMoneyScreen()),
+                    );
+                  },
+                  borderRadius: const BorderRadius.only(bottomRight: Radius.circular(22)),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 17),
+                    child: Center(
+                      child: Text(
+                        '송금',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF191F28),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 추천 상품 섹션 (NH 콕추천 스타일) ---
   Widget _buildProductsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20.0),
-          child: Text(
-            '추천 상품',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '추천 상품',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF191F28),
+                  letterSpacing: -0.3,
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE2E8F0),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '${_adPageIndex + 1}/3',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF475569),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 160,
+          height: 140,
           child: PageView(
             controller: _adPageController,
+            physics: const BouncingScrollPhysics(),
             children: [
               _buildAdBanner(
-                '아플 때 힘이 되는 안심 보험',
-                '실손, 자동차, 여행자 맞춤 설계',
-                [const Color(0xFF3B82F6), const Color(0xFF1D4ED8)],
-                Icons.security_rounded,
-                () {
+                title: '아플 때 힘이 되는 안심 보험',
+                subtitle: '실손, 자동차, 여행자 맞춤 설계',
+                tag: '보장 케어',
+                icon: Icons.health_and_safety_rounded,
+                iconColor: const Color(0xFF005BAC),
+                iconBg: const Color(0xFFEAF2FF),
+                onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const InsuranceScreen()));
                 },
               ),
               _buildAdBanner(
-                '1분이면 끝나는 맞춤 대출',
-                '내 신용점수 영향 없이 금리 비교',
-                [const Color(0xFF8B5CF6), const Color(0xFF6D28D9)],
-                Icons.monetization_on_rounded,
-                () {
+                title: '1분이면 끝나는 맞춤 대출',
+                subtitle: '내 신용점수 영향 없이 한도·금리 비교',
+                tag: '간편 한도조회',
+                icon: Icons.account_balance_rounded,
+                iconColor: const Color(0xFF7C3AED),
+                iconBg: const Color(0xFFF3E8FF),
+                onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const LoanScreen()));
                 },
               ),
               _buildAdBanner(
-                '똑똑한 자산 관리, 스마트 펀드',
-                '소액으로 시작하는 글로벌 자산 투자',
-                [const Color(0xFFF97316), const Color(0xFFEA580C)],
-                Icons.trending_up_rounded,
-                () {
+                title: '똑똑한 자산 관리 스마트 펀드',
+                subtitle: '소액으로 시작하는 글로벌 자산 투자',
+                tag: '인기 투자',
+                icon: Icons.trending_up_rounded,
+                iconColor: const Color(0xFFEA580C),
+                iconBg: const Color(0xFFFFEDD5),
+                onTap: () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const FundScreen()));
                 },
               ),
@@ -752,6 +1114,99 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
+  // --- 세련된 추천 상품 배너 카드 ---
+  Widget _buildAdBanner({
+    required String title,
+    required String subtitle,
+    required String tag,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6.0),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.03),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: iconBg,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: iconColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF191F28),
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF8B95A1),
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(icon, color: iconColor, size: 30),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --- 마이데이터 & 자산관리 섹션 ---
   Widget _buildMyDataSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -759,42 +1214,50 @@ class _MainScreenState extends State<MainScreen> {
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
-            '마이데이터',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            '자산관리 & 마이데이터',
+            style: TextStyle(
+              fontSize: 19,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF191F28),
+              letterSpacing: -0.3,
+            ),
           ),
         ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 120,
-          child: PageView(
+        const SizedBox(height: 12),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
             children: [
-              _buildMyDataCard(
-                context,
-                '나만을 위한 자산관리 서비스',
-                Icons.analytics,
-                Colors.purple,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AssetManagementScreen(initialTab: 0),
-                    ),
-                  );
-                },
+              Expanded(
+                child: _buildMyDataActionCard(
+                  title: '나만의 자산관리',
+                  subtitle: '포트폴리오 분석',
+                  icon: Icons.pie_chart_rounded,
+                  iconColor: const Color(0xFF2563EB),
+                  iconBg: const Color(0xFFEFF6FF),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AssetManagementScreen(initialTab: 0)),
+                    );
+                  },
+                ),
               ),
-              _buildMyDataCard(
-                context,
-                '내 소비 패턴 분석하기',
-                Icons.pie_chart,
-                Colors.orange,
-                () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AssetManagementScreen(initialTab: 1),
-                    ),
-                  );
-                },
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMyDataActionCard(
+                  title: '소비 패턴 분석',
+                  subtitle: '이번달 소비 리포트',
+                  icon: Icons.receipt_long_rounded,
+                  iconColor: const Color(0xFF059669),
+                  iconBg: const Color(0xFFECFDF5),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const AssetManagementScreen(initialTab: 1)),
+                    );
+                  },
+                ),
               ),
             ],
           ),
@@ -803,235 +1266,163 @@ class _MainScreenState extends State<MainScreen> {
     );
   }
 
-  Widget _buildMyDataCard(BuildContext context, String text, IconData icon, Color color, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: onTap,
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              gradient: LinearGradient(
-                colors: [color, color.withOpacity(0.7)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+  Widget _buildMyDataActionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: iconBg,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF191F28),
               ),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      text,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  ),
-                  Icon(icon, size: 40, color: Colors.white.withOpacity(0.8)),
-                ],
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Color(0xFF8B95A1),
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildAccountCard(BuildContext context, String accountType, String accountNumber, String balance, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: Card(
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Container(
-          padding: const EdgeInsets.all(20.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              colors: [color, color == Colors.blue ? Colors.blue.shade700 : Colors.red.shade700],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+  // --- 하단 바 '상품' 탭 클릭 시 상품 목록 모달 ---
+  void _showProductsModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        accountType,
-                        style: const TextStyle(color: Colors.white70, fontSize: 16),
-                      ),
-                      IconButton(
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        icon: const Icon(Icons.more_vert, color: Colors.white70, size: 22),
-                        onPressed: () {
-                          _showAccountSettings(context, accountType, accountNumber, balance);
-                        },
-                      ),
-                    ],
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(height: 8),
-                  InkWell(
-                    onTap: () {
-                      Clipboard.setData(ClipboardData(text: accountNumber));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('계좌번호가 클립보드에 복사되었습니다: $accountNumber'),
-                          backgroundColor: Colors.blue.shade800,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          duration: const Duration(seconds: 1),
-                        ),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(8),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            accountNumber,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.copy_rounded, color: Colors.white70, size: 18),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Center(
-                    child: Text(
-                      balance,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(top: 3.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildActionButton(context, '거래내역', Icons.history, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const TransactionHistoryScreen()),
-                      );
-                    }),
-                    _buildActionButton(context, '송금하기', Icons.send, () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SendMoneyScreen()),
-                      );
-                    }),
-                  ],
                 ),
               ),
+              const SizedBox(height: 18),
+              const Text(
+                '금융 상품 둘러보기',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF191F28)),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.health_and_safety_rounded, color: Color(0xFF2563EB)),
+                ),
+                title: const Text('안심 보험', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('실손, 자동차, 여행자 보험 맞춤 설계'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF8B95A1)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const InsuranceScreen()));
+                },
+              ),
+              const Divider(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3E8FF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.account_balance_rounded, color: Color(0xFF7C3AED)),
+                ),
+                title: const Text('맞춤 대출', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('신용점수 영향 없는 한도·금리 비교'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF8B95A1)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const LoanScreen()));
+                },
+              ),
+              const Divider(height: 12),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFEDD5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.trending_up_rounded, color: Color(0xFFEA580C)),
+                ),
+                title: const Text('스마트 펀드', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('글로벌 우량 자산 분산 투자'),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFF8B95A1)),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const FundScreen()));
+                },
+              ),
+              const SizedBox(height: 16),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(BuildContext context, String title, IconData icon, VoidCallback onPressed) {
-    return ElevatedButton.icon(
-      onPressed: onPressed,
-      icon: Icon(icon, color: Theme.of(context).primaryColor),
-      label: Text(title, style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-      ),
-    );
-  }
-
-  Widget _buildAdBanner(String title, String subtitle, List<Color> colors, IconData icon, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Card(
-          elevation: 4,
-          clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: colors,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: Stack(
-              children: [
-                // 우측 배경 아이콘 효과
-                Positioned(
-                  right: -15,
-                  bottom: -15,
-                  child: Icon(
-                    icon,
-                    size: 130,
-                    color: Colors.white.withOpacity(0.15),
-                  ),
-                ),
-                // 콘텐츠 텍스트
-                Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 19,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        subtitle,
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.85),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

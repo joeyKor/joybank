@@ -74,7 +74,7 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
         _encryptedAccountNumber = _simpleEncrypt(accountNumber);
         _balance = balance;
         _paymentState = paymentState;
-        
+
         if (paymentState != null) {
           _timer?.cancel();
           _showQr = false;
@@ -114,7 +114,6 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
   }
 
   String _simpleEncrypt(String input) {
-    // 하이픈을 제외한 계좌번호에 'pay' 접두사를 붙임
     final cleaned = input.replaceAll('-', '');
     return 'pay$cleaned';
   }
@@ -123,11 +122,12 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('오류'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('알림', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         content: Text(message),
         actions: <Widget>[
           TextButton(
-            child: const Text('확인'),
+            child: const Text('확인', style: TextStyle(color: Color(0xFF005BAC), fontWeight: FontWeight.bold)),
             onPressed: () {
               Navigator.of(ctx).pop();
             },
@@ -140,293 +140,518 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('조이페이', style: TextStyle(color: Colors.white)),
-        backgroundColor: Colors.transparent,
+        backgroundColor: const Color(0xFFE4F4ED),
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF191F28), size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          '조이페이 결제',
+          style: TextStyle(
+            color: Color(0xFF191F28),
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF64748B), size: 24),
+            tooltip: '결제 코드 새로고침',
+            onPressed: _startTimer,
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
-      extendBodyBehindAppBar: true,
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.blue.shade800, Colors.black87],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          // 상단 은은한 민트 그라데이션 배경
+          Container(
+            height: 200,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFFE4F4ED),
+                  Color(0xFFF1F8F5),
+                  Color(0xFFF8FAFC),
+                ],
+              ),
+            ),
           ),
-        ),
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: _buildQrContent(),
+          SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: _buildQrContent(),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildQrContent() {
+    // 1. 결제 상태 화면 (processing, success, failed)
     if (_paymentState != null) {
       final status = _paymentState!['status'];
       final amount = _paymentState!['amount'] ?? 0;
       final storeName = _paymentState!['storeName'] ?? '';
-      
+
       if (status == 'processing') {
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox(
-                width: 50,
-                height: 50,
-                child: CircularProgressIndicator(
-                  color: Colors.tealAccent,
-                  strokeWidth: 4,
-                ),
-              ),
-              const SizedBox(height: 30),
-              Text(
-                '$storeName에서 결제 중',
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '${NumberFormat('#,###').format(amount)}원',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.tealAccent.shade200,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                '잠시만 기다려주세요...',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.white60,
-                ),
-              ),
-            ],
-          ),
-        );
+        return _buildProcessingCard(storeName, amount);
       } else if (status == 'success') {
         final balanceAfter = _paymentState!['balanceAfter'] ?? 0;
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.25)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.tealAccent.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.check_circle_outline_rounded, size: 64, color: Colors.tealAccent),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                '결제 성공',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Divider(color: Colors.white24, height: 1),
-              const SizedBox(height: 16),
-              _buildPaymentDetailRow('가맹점', storeName),
-              const SizedBox(height: 12),
-              _buildPaymentDetailRow('결제금액', '${NumberFormat('#,###').format(amount)}원', isHighlight: true),
-              const SizedBox(height: 12),
-              _buildPaymentDetailRow('남은 잔액', '${NumberFormat('#,###').format(balanceAfter)}원'),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _clearPaymentStateAndClose,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.tealAccent.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    '확인',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+        return _buildSuccessCard(storeName, amount, balanceAfter);
       } else if (status == 'failed') {
         final message = _paymentState!['message'] ?? '결제 중 오류가 발생했습니다.';
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.2)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.redAccent.withOpacity(0.2),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.error_outline_rounded, size: 64, color: Colors.redAccent),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                '결제 실패',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 15, color: Colors.white70),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _clearPaymentStateAndReset,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.shade700,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    '다시 시도',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
+        return _buildFailedCard(message);
       }
     }
 
+    // 2. 만료된 경우 (다시 생성 버튼)
     if (!_showQr) {
-      return GestureDetector(
-        onTap: _loadAccountDataAndGenerateQr,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.tealAccent, Colors.blueAccent],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
             ),
-            borderRadius: BorderRadius.circular(30),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                spreadRadius: 2,
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFF1F5F9),
+                shape: BoxShape.circle,
               ),
-            ],
-          ),
-          child: const Text(
-            'QR결제',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
+              child: const Icon(Icons.timer_off_rounded, size: 32, color: Color(0xFF64748B)),
             ),
-          ),
+            const SizedBox(height: 20),
+            const Text(
+              '인증 시간이 만료되었습니다',
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF191F28),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '안전한 결제를 위해 새로운 결제 코드를 생성해 주세요.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Color(0xFF8B95A1), height: 1.4),
+            ),
+            const SizedBox(height: 28),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton.icon(
+                onPressed: _startTimer,
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                label: const Text('결제 코드 다시 받기', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF005BAC),
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
 
+    // 3. 로딩 상태
     if (_encryptedAccountNumber == null) {
-      return const CircularProgressIndicator(color: Colors.white);
+      return const Center(child: CircularProgressIndicator(color: Color(0xFF005BAC)));
     }
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          '$_countdown 초 남음',
-          style: const TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-            shadows: [Shadow(blurRadius: 10.0, color: Colors.black54)],
+    // 4. 정상 QR 결제 카드
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
-        ),
-        const SizedBox(height: 30),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.25),
-                spreadRadius: 5,
-                blurRadius: 15,
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 상단: 출금 계좌 정보 헤더
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 20, 22, 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF005BAC),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'JB',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '조이 스마트 입출금통장',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF191F28),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      if (_balance != null)
+                        Text(
+                          '잔액 ${NumberFormat('#,###').format(_balance)}원',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Color(0xFF8B95A1),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF5EF),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    '결제대기',
+                    style: TextStyle(
+                      color: Color(0xFF00A86B),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 24),
+          // 타이머 배지
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.timer_outlined, size: 16, color: Color(0xFF005BAC)),
+                const SizedBox(width: 6),
+                Text(
+                  '$_countdown초 남음',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF005BAC),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          // QR 코드 박스
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFE5E7EB), width: 1.2),
+            ),
+            child: QrImageView(
+              data: _encryptedAccountNumber!,
+              version: QrVersions.auto,
+              size: 200.0,
+              gapless: false,
+              eyeStyle: const QrEyeStyle(
+                eyeShape: QrEyeShape.square,
+                color: Color(0xFF191F28),
+              ),
+              dataModuleStyle: const QrDataModuleStyle(
+                dataModuleShape: QrDataModuleShape.square,
+                color: Color(0xFF191F28),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          // 안내 문구
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              '매장 결제 단말기(바코드/QR 리더기)에 보여주세요',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Color(0xFF4E5968),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: const [
+              Icon(Icons.shield_outlined, size: 14, color: Color(0xFF8B95A1)),
+              SizedBox(width: 4),
+              Text(
+                '1회용 보안 코드로 안전하게 암호화됩니다',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF8B95A1),
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ],
           ),
-          child: QrImageView(
-            data: _encryptedAccountNumber!,
-            version: QrVersions.auto,
-            size: 220.0,
+          const SizedBox(height: 28),
+        ],
+      ),
+    );
+  }
+
+  // --- 결제 진행 중 카드 ---
+  Widget _buildProcessingCard(String storeName, dynamic amount) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
           ),
-        ),
-        const SizedBox(height: 30),
-        if (_balance != null)
-          Text(
-            '잔액: ${NumberFormat('#,###').format(_balance)}원',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: Colors.white70,
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              color: Color(0xFF005BAC),
+              strokeWidth: 4,
             ),
           ),
-      ],
+          const SizedBox(height: 28),
+          Text(
+            storeName.isNotEmpty ? storeName : '가맹점',
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF8B95A1),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '결제가 진행 중입니다',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            '${NumberFormat('#,###').format(amount)}원',
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF005BAC),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            '잠시만 기다려주세요...',
+            style: TextStyle(fontSize: 13, color: Color(0xFF8B95A1)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 결제 완료 카드 ---
+  Widget _buildSuccessCard(String storeName, dynamic amount, dynamic balanceAfter) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              color: Color(0xFFEAF5EF),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.check_rounded, size: 34, color: Color(0xFF00A86B)),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            '결제 완료',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${NumberFormat('#,###').format(amount)}원이 정상 결제되었습니다.',
+            style: const TextStyle(fontSize: 14, color: Color(0xFF8B95A1)),
+          ),
+          const SizedBox(height: 24),
+          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+          const SizedBox(height: 18),
+          _buildPaymentDetailRow('결제 가맹점', storeName.isNotEmpty ? storeName : '조이 가맹점'),
+          const SizedBox(height: 12),
+          _buildPaymentDetailRow('결제 금액', '${NumberFormat('#,###').format(amount)}원', isHighlight: true),
+          const SizedBox(height: 12),
+          _buildPaymentDetailRow('결제 후 잔액', '${NumberFormat('#,###').format(balanceAfter)}원'),
+          const SizedBox(height: 12),
+          _buildPaymentDetailRow('결제 일시', DateFormat('yyyy.MM.dd HH:mm').format(DateTime.now())),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _clearPaymentStateAndClose,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF005BAC),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: const Text('확인', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // --- 결제 실패 카드 ---
+  Widget _buildFailedCard(String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(28),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: const BoxDecoration(
+              color: Color(0xFFFEE2E2),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.close_rounded, size: 34, color: Color(0xFFEF4444)),
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            '결제 실패',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF191F28),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF8B95A1), height: 1.4),
+          ),
+          const SizedBox(height: 28),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _clearPaymentStateAndReset,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
+              ),
+              child: const Text('다시 시도', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -436,14 +661,14 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(fontSize: 15, color: Colors.white60),
+          style: const TextStyle(fontSize: 14, color: Color(0xFF8B95A1), fontWeight: FontWeight.w500),
         ),
         Text(
           value,
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: isHighlight ? FontWeight.bold : FontWeight.w500,
-            color: isHighlight ? Colors.tealAccent : Colors.white,
+            fontSize: isHighlight ? 16 : 14,
+            fontWeight: isHighlight ? FontWeight.w800 : FontWeight.w600,
+            color: isHighlight ? const Color(0xFF005BAC) : const Color(0xFF191F28),
           ),
         ),
       ],
@@ -459,9 +684,7 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
 
   void _clearPaymentStateAndReset() async {
     await _clearPaymentStateInFirestore();
-    if (mounted) {
-      // The listener will automatically handle document update and restart the countdown
-    }
+    _startTimer();
   }
 
   Future<void> _clearPaymentStateInFirestore() async {
@@ -483,3 +706,4 @@ class _JoyPayScreenState extends State<JoyPayScreen> {
     }
   }
 }
+

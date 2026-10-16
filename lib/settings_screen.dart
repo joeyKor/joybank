@@ -201,9 +201,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _showVersionHistoryDialog(BuildContext context) {
     final List<Map<String, dynamic>> versionHistory = [
       {
+        'version': 'ver 2.1.0',
+        'date': '2026.10.17',
+        'isLatest': true,
+        'changes': [
+          '메인 홈 화면 모던 핀테크 스타일 전면 개편 (잔액 숨김 및 퀵 액션)',
+          '조이페이 바코드/QR 결제 화면 및 상태 영수증 디자인 리뉴얼',
+          '간편비밀번호(PIN) 및 로그인 보안 키패드 디자인 개편',
+          '거래내역 화면 일시 상세 표기 및 입/출금 레이아웃 고도화',
+          '가맹점 결제(PAYMENT) 데이터 분류 및 송금 프로세스 안정성 강화',
+        ],
+      },
+      {
         'version': 'ver 2.0.0',
         'date': '2026.09.24',
-        'isLatest': true,
+        'isLatest': false,
         'changes': [
           '거래내역 화면 카카오뱅크 스타일 전면 개편',
           '시원한 대형 계좌 잔액 및 복사 가능한 계좌번호 배지 적용',
@@ -439,7 +451,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: ListTile(
               leading: const Icon(Icons.info_outline),
               title: const Text('앱 정보'),
-              subtitle: const Text('ver 2.0.0 (최신 버전)'),
+              subtitle: const Text('ver 2.1.0 (최신 버전)'),
               trailing: const Icon(Icons.chevron_right, color: Colors.grey),
               onTap: () => _showVersionHistoryDialog(context),
             ),

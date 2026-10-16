@@ -138,7 +138,6 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   bool _isAccountValidated = false;
   String? _validatedRecipientUserId;
   String _selectedBank = '조이뱅크';
-  String _recipientType = '계좌'; // '계좌', '휴대전화'
   String _selectedBottomTab = '최근송금'; // '최근송금', '내계좌', '자주쓰는'
   String _myAccountNumber = '110-123-456789';
   String _myAccountName = '조이 입출금 통장';
@@ -825,32 +824,21 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       String? foundRecipientUserId;
 
       for (var userDoc in usersSnapshot.docs) {
-        if (_recipientType == '휴대전화') {
-          final phone = (userDoc.data()['phoneNumber'] ?? userDoc.data()['phone'] ?? '')
-              .toString()
-              .replaceAll(RegExp(r'[^0-9]'), '');
-          if (phone.isNotEmpty && phone == cleanedInputAccountNumber) {
-            foundRecipientName = userDoc.data()['name'] ?? '이름 없음';
-            foundRecipientUserId = userDoc.id;
-            break;
-          }
-        } else {
-          final accountsCollection = userDoc.reference.collection('accounts');
-          final mainAccountDoc = await accountsCollection.doc('main').get();
+        final accountsCollection = userDoc.reference.collection('accounts');
+        final mainAccountDoc = await accountsCollection.doc('main').get();
 
-          if (mainAccountDoc.exists) {
-            final storedAccountNumber =
-                mainAccountDoc.data()?['accountNumber'] as String?;
-            if (storedAccountNumber != null) {
-              final cleanedStoredAccountNumber = storedAccountNumber.replaceAll(
-                RegExp(r'[^0-9]'),
-                '',
-              );
-              if (cleanedStoredAccountNumber == cleanedInputAccountNumber) {
-                foundRecipientName = userDoc.data()['name'] ?? '이름 없음';
-                foundRecipientUserId = userDoc.id;
-                break;
-              }
+        if (mainAccountDoc.exists) {
+          final storedAccountNumber =
+              mainAccountDoc.data()?['accountNumber'] as String?;
+          if (storedAccountNumber != null) {
+            final cleanedStoredAccountNumber = storedAccountNumber.replaceAll(
+              RegExp(r'[^0-9]'),
+              '',
+            );
+            if (cleanedStoredAccountNumber == cleanedInputAccountNumber) {
+              foundRecipientName = userDoc.data()['name'] ?? '이름 없음';
+              foundRecipientUserId = userDoc.id;
+              break;
             }
           }
         }
@@ -1456,124 +1444,41 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               color: Color(0xFF191F28),
             ),
           ),
-          const SizedBox(height: 14),
-          // 계좌 / 휴대전화 선택 토글
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: const Color(0xFFECEFF1),
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _recipientType = '계좌';
-                      _recipientAccountController.clear();
-                      _enteredAccountNumber = '';
-                      _isAccountValidated = false;
-                      _recipientName = null;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _recipientType == '계좌'
-                          ? const Color(0xFF009B86)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '계좌',
-                      style: TextStyle(
-                        color: _recipientType == '계좌'
-                            ? Colors.white
-                            : const Color(0xFF64748B),
+          const SizedBox(height: 20),
+          // 은행 선택
+          Align(
+            alignment: Alignment.centerLeft,
+            child: InkWell(
+              onTap: _showBankSelectionBottomSheet,
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _selectedBank,
+                      style: const TextStyle(
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        color: Color(0xFF191F28),
                       ),
                     ),
-                  ),
-                ),
-                InkWell(
-                  onTap: () {
-                    setState(() {
-                      _recipientType = '휴대전화';
-                      _recipientAccountController.clear();
-                      _enteredAccountNumber = '';
-                      _isAccountValidated = false;
-                      _recipientName = null;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: _recipientType == '휴대전화'
-                          ? const Color(0xFF009B86)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(20),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 20,
+                      color: Color(0xFF64748B),
                     ),
-                    child: Text(
-                      '휴대전화',
-                      style: TextStyle(
-                        color: _recipientType == '휴대전화'
-                            ? Colors.white
-                            : const Color(0xFF64748B),
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          // 은행 선택 및 계좌번호 입력란
-          if (_recipientType == '계좌') ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: InkWell(
-                onTap: _showBankSelectionBottomSheet,
-                borderRadius: BorderRadius.circular(6),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _selectedBank,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF191F28),
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 20,
-                        color: Color(0xFF64748B),
-                      ),
-                    ],
-                  ),
+                  ],
                 ),
               ),
             ),
-          ],
+          ),
           TextField(
             controller: _recipientAccountController,
             keyboardType: TextInputType.number,
-            inputFormatters: _recipientType == '계좌'
-                ? [JoyBankAccountNumberFormatter()]
-                : [
-                    FilteringTextInputFormatter.digitsOnly,
-                    LengthLimitingTextInputFormatter(11),
-                  ],
+            inputFormatters: [JoyBankAccountNumberFormatter()],
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -1588,7 +1493,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             },
             onSubmitted: (_) => _handleAccountConfirm(),
             decoration: InputDecoration(
-              hintText: _recipientType == '계좌' ? '계좌번호 입력' : '휴대전화번호 입력',
+              hintText: '계좌번호 입력',
               hintStyle: const TextStyle(
                 color: Color(0xFF94A3B8),
                 fontSize: 15,

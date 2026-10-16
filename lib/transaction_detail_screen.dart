@@ -60,9 +60,17 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
     });
   }
 
+  bool get _isDeposit {
+    if (_transactionData['is_deposit'] == true) return true;
+    if (_transactionData['is_deposit'] == false) return false;
+    final type = _transactionData['type']?.toString().toLowerCase() ?? '';
+    if (type == '입금' || type == 'deposit' || type == 'interest') return true;
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isDeposit = _transactionData['type'] == '입금'; // type 필드로 입금/송금 구분
+    final isDeposit = _isDeposit; // 입금/출금 구분
     final displayAmount = (_transactionData['amount'] as num).abs(); // 금액은 항상 양수로 표시
 
     return Scaffold(
@@ -162,7 +170,7 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
   }
 
   Widget _buildDetailInfoSection() {
-    final isDeposit = _transactionData['type'] == '입금';
+    final isDeposit = _isDeposit;
     String descriptionText = _transactionData['description'] ?? '내용 없음';
 
     // 송금/입금 유형에 따라 메모 표시

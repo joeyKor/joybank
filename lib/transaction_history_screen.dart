@@ -23,6 +23,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   // Search & Filter state
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  bool _showScrollToTop = false;
   String _searchQuery = '';
   String _periodFilter = '3개월'; // 1개월, 3개월, 6개월, 전체
   String _typeFilter = '전체'; // 전체, 입금, 출금
@@ -32,11 +34,21 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   void initState() {
     super.initState();
     _loadUserDataAndStreams();
+    _scrollController.addListener(() {
+      if (_scrollController.hasClients) {
+        if (_scrollController.offset > 200 && !_showScrollToTop) {
+          setState(() => _showScrollToTop = true);
+        } else if (_scrollController.offset <= 200 && _showScrollToTop) {
+          setState(() => _showScrollToTop = false);
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -90,16 +102,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
 
   bool _isDeposit(Map<String, dynamic> data) {
     if (data['is_deposit'] == true) return true;
+    if (data['is_deposit'] == false) return false;
+
     final type = data['type']?.toString().toLowerCase() ?? '';
     if (type == '입금' || type == 'deposit' || type == 'interest') return true;
+    if (type == '송금' || type == 'transfer' || type == '출금' || type == 'payment') return false;
+
     final amt = data['amount'] as num?;
-    if (amt != null &&
-        amt > 0 &&
-        type != '송금' &&
-        type != 'transfer' &&
-        type != '출금') {
-      return true;
-    }
+    if (amt != null && amt < 0) return false;
     return false;
   }
 
@@ -383,263 +393,313 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               return Column(
                 children: [
                   Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Stack(
                       children: [
-                        const SizedBox(height: 12),
-                        // 1. Account number with copy icon
-                        InkWell(
-                          onTap: () {
-                            Clipboard.setData(ClipboardData(text: accountNumber));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('$accountNumber 계좌번호가 복사되었습니다.'),
-                                behavior: SnackBarBehavior.floating,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                accountNumber,
-                                style: const TextStyle(
-                                  color: Color(0xFF8B95A1),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  decoration: TextDecoration.underline,
-                                  decorationColor: Color(0xFFC4CBD4),
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              const Icon(
-                                Icons.copy_rounded,
-                                size: 14,
-                                color: Color(0xFF8B95A1),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-
-                        // 2. Large Balance Text
-                        Text(
-                          '${NumberFormat('#,###').format(balance)}원',
-                          style: const TextStyle(
-                            color: Color(0xFF191F28),
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 22),
-
-                        // 3. Search & Filter Bar
-                        Container(
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF2F4F6),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 14),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.search,
-                                color: Color(0xFF191F28),
-                                size: 22,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  controller: _searchController,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _searchQuery = val.trim();
-                                    });
-                                  },
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    color: Color(0xFF191F28),
-                                  ),
-                                  decoration: const InputDecoration(
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                    hintText: '',
-                                  ),
-                                ),
-                              ),
-                              if (_searchQuery.isNotEmpty)
-                                GestureDetector(
-                                  onTap: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                  child: const Padding(
-                                    padding: EdgeInsets.only(right: 8.0),
-                                    child: Icon(
-                                      Icons.cancel,
-                                      size: 16,
-                                      color: Color(0xFF8B95A1),
-                                    ),
-                                  ),
-                                ),
-                              InkWell(
-                                onTap: _showFilterModal,
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      '$_periodFilter · $_typeFilter · $_sortOrder',
-                                      style: const TextStyle(
-                                        color: Color(0xFF6B7684),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 2),
-                                    const Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 16,
-                                      color: Color(0xFF6B7684),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-
-                        // 4. Transaction List Grouped by Date
-                        if (filteredDocs.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 60),
-                            child: Center(
-                              child: Text(
-                                _searchQuery.isNotEmpty
-                                    ? '검색 결과가 없습니다.'
-                                    : '해당 기간의 거래 내역이 없습니다.',
-                                style: const TextStyle(
-                                  color: Color(0xFF8B95A1),
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ),
-                          )
-                        else
-                          ...filteredDocs.map((doc) {
-                            final data = doc.data() as Map<String, dynamic>;
-                            final isDeposit = _isDeposit(data);
-                            final rawAmt = (data['amount'] as num?) ?? 0;
-                            final absAmount = rawAmt.abs();
-                            final balanceAfter = (data['balance_after'] ??
-                                data['balanceAfter']) as num?;
-                            final title = _getDisplayTitle(data, isDeposit);
-                            final ts = _parseTimestamp(data['timestamp']);
-                            final dateStr = DateFormat('MM.dd').format(ts);
-                            final timeStr = DateFormat('HH:mm').format(ts);
-
-                            return InkWell(
+                        ListView(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          children: [
+                            const SizedBox(height: 12),
+                            // 1. Account number with copy icon
+                            InkWell(
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => TransactionDetailScreen(
-                                      transaction: data,
-                                      transactionId: doc.id,
+                                Clipboard.setData(ClipboardData(text: accountNumber));
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('$accountNumber 계좌번호가 복사되었습니다.'),
+                                    behavior: SnackBarBehavior.floating,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
+                                    duration: const Duration(seconds: 2),
                                   ),
                                 );
                               },
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 20, bottom: 4),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // 1. 개별 거래마다 상단에 날짜 표기 (08.20 등)
-                                    Text(
-                                      dateStr,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    accountNumber,
+                                    style: const TextStyle(
+                                      color: Color(0xFF8B95A1),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      decoration: TextDecoration.underline,
+                                      decorationColor: Color(0xFFC4CBD4),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(
+                                    Icons.copy_rounded,
+                                    size: 14,
+                                    color: Color(0xFF8B95A1),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+
+                            // 2. Large Balance Text
+                            Text(
+                              '${NumberFormat('#,###').format(balance)}원',
+                              style: const TextStyle(
+                                color: Color(0xFF191F28),
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+
+                            // 3. Search & Filter Bar
+                            Container(
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF2F4F6),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.search,
+                                    color: Color(0xFF191F28),
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _searchController,
+                                      onChanged: (val) {
+                                        setState(() {
+                                          _searchQuery = val.trim();
+                                        });
+                                      },
                                       style: const TextStyle(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.bold,
                                         color: Color(0xFF191F28),
                                       ),
+                                      decoration: const InputDecoration(
+                                        border: InputBorder.none,
+                                        isDense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                        hintText: '',
+                                      ),
                                     ),
-                                    const SizedBox(height: 10),
-                                    // 2. 거래 상세 내역 Row
-                                    Row(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                  ),
+                                  if (_searchQuery.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: () {
+                                        _searchController.clear();
+                                        setState(() {
+                                          _searchQuery = '';
+                                        });
+                                      },
+                                      child: const Padding(
+                                        padding: EdgeInsets.only(right: 8.0),
+                                        child: Icon(
+                                          Icons.cancel,
+                                          size: 16,
+                                          color: Color(0xFF8B95A1),
+                                        ),
+                                      ),
+                                    ),
+                                  InkWell(
+                                    onTap: _showFilterModal,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // Left: Title & Time
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                title,
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: Color(0xFF191F28),
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                timeStr,
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: Color(0xFF8B95A1),
-                                                ),
-                                              ),
-                                            ],
+                                        Text(
+                                          '$_periodFilter · $_typeFilter · $_sortOrder',
+                                          style: const TextStyle(
+                                            color: Color(0xFF6B7684),
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        // Right: Amount & Balance after
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              isDeposit
-                                                  ? '${NumberFormat('#,###').format(absAmount)}원'
-                                                  : '-${NumberFormat('#,###').format(absAmount)}원',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                                color: isDeposit
-                                                    ? const Color(0xFF0064FF)
-                                                    : const Color(0xFF191F28),
-                                              ),
+                                        const SizedBox(width: 2),
+                                        const Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          size: 16,
+                                          color: Color(0xFF6B7684),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // 4. Transaction List Grouped by Date
+                            if (filteredDocs.isEmpty)
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 60),
+                                child: Center(
+                                  child: Text(
+                                    _searchQuery.isNotEmpty
+                                        ? '검색 결과가 없습니다.'
+                                        : '해당 기간의 거래 내역이 없습니다.',
+                                    style: const TextStyle(
+                                      color: Color(0xFF8B95A1),
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                ),
+                              )
+                            else ...[
+                              const Divider(
+                                height: 1,
+                                thickness: 1,
+                                color: Color(0xFFEEEEEE),
+                              ),
+                              ...filteredDocs.map((doc) {
+                                final data = doc.data() as Map<String, dynamic>;
+                                final isDeposit = _isDeposit(data);
+                                final rawAmt = (data['amount'] as num?) ?? 0;
+                                final absAmount = rawAmt.abs();
+                                final balanceAfter = (data['balance_after'] ??
+                                    data['balanceAfter']) as num?;
+                                final title = _getDisplayTitle(data, isDeposit);
+                                final ts = _parseTimestamp(data['timestamp']);
+                                final dateTimeStr =
+                                    DateFormat('yyyy.MM.dd HH:mm:ss').format(ts);
+
+                                return Column(
+                                  children: [
+                                    InkWell(
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => TransactionDetailScreen(
+                                              transaction: data,
+                                              transactionId: doc.id,
                                             ),
+                                          ),
+                                        );
+                                      },
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // 1. 상단: 날짜/시간 (좌측) + 입/출금 구분 (우측)
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  dateTimeStr,
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Color(0xFF8E8E93),
+                                                    fontWeight: FontWeight.normal,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  isDeposit ? '입금' : '출금',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    color: isDeposit
+                                                        ? const Color(0xFF009688)
+                                                        : const Color(0xFFE55A5A),
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 6),
+                                            // 2. 중단: 상호/대상 (좌측) + 금액 (우측)
+                                            Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    title,
+                                                    style: const TextStyle(
+                                                      fontSize: 17,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFF191F28),
+                                                    ),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  '${NumberFormat('#,###').format(absAmount)}원',
+                                                  style: TextStyle(
+                                                    fontSize: 18,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: isDeposit
+                                                        ? const Color(0xFF009688)
+                                                        : const Color(0xFF191F28),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            // 3. 하단: 잔액 (우측 정렬)
                                             if (balanceAfter != null) ...[
                                               const SizedBox(height: 4),
-                                              Text(
-                                                '${NumberFormat('#,###').format(balanceAfter)}원',
-                                                style: const TextStyle(
-                                                  fontSize: 13,
-                                                  color: Color(0xFF8B95A1),
+                                              Align(
+                                                alignment: Alignment.centerRight,
+                                                child: Text(
+                                                  '잔액 ${NumberFormat('#,###').format(balanceAfter)}원',
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Color(0xFF757575),
+                                                  ),
                                                 ),
                                               ),
                                             ],
                                           ],
                                         ),
-                                      ],
+                                      ),
+                                    ),
+                                    const Divider(
+                                      height: 1,
+                                      thickness: 1,
+                                      color: Color(0xFFEEEEEE),
                                     ),
                                   ],
+                                );
+                              }),
+                            ],
+                            const SizedBox(height: 24),
+                          ],
+                        ),
+                        // Scroll to top floating button
+                        if (_showScrollToTop)
+                          Positioned(
+                            bottom: 16,
+                            right: 16,
+                            child: Material(
+                              elevation: 3,
+                              shape: const CircleBorder(),
+                              color: Colors.white,
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: () {
+                                  _scrollController.animateTo(
+                                    0,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeOut,
+                                  );
+                                },
+                                child: const SizedBox(
+                                  width: 44,
+                                  height: 44,
+                                  child: Icon(
+                                    Icons.arrow_upward_rounded,
+                                    color: Color(0xFF555555),
+                                    size: 22,
+                                  ),
                                 ),
                               ),
-                            );
-                          }),
-                        const SizedBox(height: 24),
+                            ),
+                          ),
                       ],
                     ),
                   ),
