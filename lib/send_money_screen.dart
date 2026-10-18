@@ -417,12 +417,12 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
+      builder: (BuildContext sheetContext) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setSheetState) {
-            final isButtonEnabled = _enteredAccountNumber.isNotEmpty;
-            final formattedText = _formatAccountNumber(_enteredAccountNumber);
-            final bankDetails = _bankDetails[_selectedBank] ?? {'color': Colors.grey, 'initials': 'BK'};
+            final cleanDigits = _enteredAccountNumber.replaceAll(RegExp(r'[^0-9]'), '');
+            final isButtonEnabled = cleanDigits.isNotEmpty;
+            final bankDetails = _bankDetails[_selectedBank] ?? {'color': const Color(0xFFE5A91E), 'initials': 'NH'};
 
             void updateState(VoidCallback fn) {
               fn();
@@ -433,88 +433,108 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
               ),
               padding: EdgeInsets.only(
-                top: 24,
+                top: 16,
                 left: 20,
                 right: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + MediaQuery.of(context).padding.bottom + 24,
+                bottom: MediaQuery.of(sheetContext).padding.bottom + 16,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  InkWell(
-                    onTap: () {
-                      _showBankSelectionBottomSheetSheet(updateState);
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircleAvatar(
-                            backgroundColor: bankDetails['color'] as Color,
-                            radius: 14,
-                            child: Text(
-                              bankDetails['initials'] as String,
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
-                            ),
+                  // 상단 바: 좌측 은행 선택, 우측 닫기(X) 버튼
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      InkWell(
+                        onTap: () {
+                          _showBankSelectionBottomSheetSheet(updateState);
+                        },
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: bankDetails['color'] as Color,
+                                radius: 10,
+                                child: Text(
+                                  bankDetails['initials'] as String,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 8,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _selectedBank,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF191F28),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: Color(0xFF8B95A1),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _selectedBank,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black87,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.keyboard_arrow_down, size: 18, color: Colors.black54),
-                        ],
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 22, color: Color(0xFF4B5563)),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => Navigator.pop(sheetContext),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    '입금은행',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.black45,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
+                  // 계좌번호 입력 표시 상자 (청록색 테두리, 중앙 정렬 계좌번호, 우측 X 삭제 버튼)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 16),
+                    height: 54,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF2F4F6),
-                      borderRadius: BorderRadius.circular(14),
+                      color: const Color(0xFFFBFDFD),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: const Color(0xFFE5E8EB),
-                        width: 1,
+                        color: const Color(0xFF388E88),
+                        width: 1.5,
                       ),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
                       children: [
+                        const SizedBox(width: 24),
                         Expanded(
-                          child: Text(
-                            _enteredAccountNumber.isNotEmpty ? formattedText : '입금할 계좌번호 입력',
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              color: _enteredAccountNumber.isNotEmpty ? const Color(0xFF191F28) : const Color(0xFF8B95A1),
+                          child: Center(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Text(
+                                cleanDigits.isNotEmpty ? cleanDigits : '계좌번호 입력',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w600,
+                                  color: cleanDigits.isNotEmpty
+                                      ? const Color(0xFF191F28)
+                                      : const Color(0xFFB0B8C1),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                        if (_enteredAccountNumber.isNotEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.cancel, color: Color(0xFF8B95A1), size: 20),
-                            onPressed: () {
+                        if (cleanDigits.isNotEmpty)
+                          GestureDetector(
+                            onTap: () {
                               updateState(() {
                                 _enteredAccountNumber = '';
                                 _recipientAccountController.clear();
@@ -522,22 +542,35 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                                 _recipientName = null;
                               });
                             },
-                            constraints: const BoxConstraints(),
-                            padding: EdgeInsets.zero,
-                          ),
+                            child: Container(
+                              width: 22,
+                              height: 22,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFD1D5DB),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.close,
+                                size: 14,
+                                color: Colors.white,
+                              ),
+                            ),
+                          )
+                        else
+                          const SizedBox(width: 24),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 18),
+                  // 커스텀 키패드
                   _buildCustomKeypad(
                     onDigitTap: (digit) {
-                      debugPrint('=== sheet onDigitTap: $digit ===');
                       final clean = _enteredAccountNumber.replaceAll(RegExp(r'[^0-9]'), '');
-                      if (clean.length < 13) {
+                      if (clean.length < 16) {
                         updateState(() {
                           final newClean = clean + digit;
-                          _enteredAccountNumber = _formatAccountNumber(newClean);
-                          _recipientAccountController.text = _enteredAccountNumber;
+                          _enteredAccountNumber = newClean;
+                          _recipientAccountController.text = _formatAccountNumber(newClean);
                           _isAccountValidated = false;
                           _recipientName = null;
                         });
@@ -548,42 +581,44 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                       if (clean.isNotEmpty) {
                         updateState(() {
                           final newClean = clean.substring(0, clean.length - 1);
-                          _enteredAccountNumber = _formatAccountNumber(newClean);
-                          _recipientAccountController.text = _enteredAccountNumber;
+                          _enteredAccountNumber = newClean;
+                          _recipientAccountController.text = _formatAccountNumber(newClean);
                           _isAccountValidated = false;
                           _recipientName = null;
                         });
                       }
                     },
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 18),
+                  // 청록색 '다음' 버튼
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
                       onPressed: isButtonEnabled
                           ? () async {
+                              Navigator.pop(sheetContext);
                               await _handleAccountConfirm();
-                              if (context.mounted) Navigator.pop(context);
                             }
                           : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isButtonEnabled
-                            ? const Color(0xFFFFEB00)
-                            : const Color(0xFFF2F4F6),
-                        foregroundColor: isButtonEnabled
-                            ? const Color(0xFF191F28)
-                            : const Color(0xFFB0B8C1),
+                            ? const Color(0xFF388E88)
+                            : const Color(0xFF388E88).withOpacity(0.4),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFF388E88).withOpacity(0.4),
+                        disabledForegroundColor: Colors.white.withOpacity(0.8),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         elevation: 0,
                       ),
                       child: const Text(
-                        '확인',
+                        '다음',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
@@ -669,6 +704,11 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
   void initState() {
     super.initState();
     _initData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _currentStep == SendMoneyStep.accountValidation && _enteredAccountNumber.isEmpty) {
+        _showAccountInputBottomSheet();
+      }
+    });
   }
 
   Future<void> _initData() async {
@@ -1477,21 +1517,14 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
           ),
           TextField(
             controller: _recipientAccountController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [JoyBankAccountNumberFormatter()],
+            readOnly: true,
+            showCursor: false,
+            onTap: _showAccountInputBottomSheet,
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: Color(0xFF191F28),
             ),
-            onChanged: (val) {
-              setState(() {
-                _enteredAccountNumber = val;
-                _isAccountValidated = false;
-                _recipientName = null;
-              });
-            },
-            onSubmitted: (_) => _handleAccountConfirm(),
             decoration: InputDecoration(
               hintText: '계좌번호 입력',
               hintStyle: const TextStyle(
@@ -1526,7 +1559,13 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
                       },
                     ),
                   TextButton(
-                    onPressed: _handleAccountConfirm,
+                    onPressed: () {
+                      if (_enteredAccountNumber.isEmpty) {
+                        _showAccountInputBottomSheet();
+                      } else {
+                        _handleAccountConfirm();
+                      }
+                    },
                     child: const Text(
                       '확인',
                       style: TextStyle(
@@ -1952,13 +1991,13 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
             onPressed: isButtonEnabled ? _goToNextStep : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: isButtonEnabled
-                  ? const Color(0xFFFFEB00)
-                  : const Color(0xFFF2F4F6),
-              foregroundColor: isButtonEnabled
-                  ? const Color(0xFF191F28)
-                  : const Color(0xFFB0B8C1),
+                  ? const Color(0xFF388E88)
+                  : const Color(0xFF388E88).withOpacity(0.4),
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: const Color(0xFF388E88).withOpacity(0.4),
+              disabledForegroundColor: Colors.white.withOpacity(0.8),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
               ),
               elevation: 0,
             ),
@@ -1967,6 +2006,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
             ),
           ),
@@ -2226,7 +2266,7 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
               ],
             ],
           ),
-          if (row < 3) const SizedBox(height: 15),
+          if (row < 3) const SizedBox(height: 12),
         ],
       ],
     );
@@ -2243,13 +2283,28 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
       return _buildKeyText('$val', () => onDigitTap('$val'));
     } else {
       if (col == 0) {
-        return const SizedBox.shrink(); // Empty space bottom left
+        return _buildKeySpecialText('콕');
       } else if (col == 1) {
         return _buildKeyText('0', () => onDigitTap('0'));
       } else {
-        return _buildKeyIcon(Icons.backspace_outlined, onBackspaceTap);
+        return _buildKeyIcon(Icons.arrow_back, onBackspaceTap);
       }
     }
+  }
+
+  Widget _buildKeySpecialText(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      alignment: Alignment.center,
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w500,
+          color: Color(0xFFB0B8C1),
+        ),
+      ),
+    );
   }
 
   Widget _buildKeyText(String text, VoidCallback onTap) {
@@ -2259,14 +2314,14 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           alignment: Alignment.center,
           child: Text(
             text,
             style: const TextStyle(
               fontSize: 26,
               fontWeight: FontWeight.w400,
-              color: Colors.black87,
+              color: Color(0xFF191F28),
             ),
           ),
         ),
@@ -2281,12 +2336,12 @@ class _SendMoneyScreenState extends State<SendMoneyScreen> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(100),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 14),
           alignment: Alignment.center,
           child: Icon(
             icon,
             size: 24,
-            color: Colors.black87,
+            color: const Color(0xFF191F28),
           ),
         ),
       ),
